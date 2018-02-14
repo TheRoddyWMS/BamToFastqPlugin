@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+
+import os
+from plumbum import local
+from plumbum.cmd import mv, mkdir
+
+class Bam2Fastq:
+    '''Workflow for extracting [optionally] sorted FASTQs from a BAM file. The FASTQs are reverse complemented for
+    reverse aligned reads, i.e. they are returned in the same orientation as in the original FASTQs. Only non-supplementary
+    reads are returned (for BWA these are *all* the full-length reads used for alignment).
+
+    Please have a look at the initFromEnvironment() method to learn how to configure this script.'''
+
+    def __init__(self):
+
+    def tempName(dir, baseName):
+        return os.path.join(dir, "tmp." + baseName)
+
+    def finalName(dir, baseName):
+        return os.path.join(dir, baseName)
+
+    def run(self):
+        ## Set up the picard options. That's a bit involved, as it has to follow the involved picard logic.
+        picardOptions = ["CREATE_MD5_FILE=" + ("true" if self.checkMd5 else "false"), \
+                         "COMPRESS_FASTQS=" + self.compressIntermediateFastqs]
+        if self.pairedEnd:
+            if self.outputPerReadGroup:
+                ## Write all read-group FASTQs into a directory.
+                coreFilenames = [self.baseName]
+                tmpDir = self.tempName(self.outputDir, self.baseName)
+                picardOptions += ["OUTPUT_PER_RG=" + self.outputPerReadGroup, \
+                                  "RG_TAG='{0}'".format(self.readGroupTag), \
+                                  "OUTPUT_DIR='{0}'".format(tmpDir)]
+                mkdir["-p", tmpDir]
+            else:
+                ## Write 2-3 FASTQs, depending on whether unpairedFastq is true.
+                fastq1 = self.baseName + "_r1.fastq" + self.compressionSuffix
+                fastq2 = self.baseName + "_r2.fastq" + self.compressionSuffix
+                coreFilenames = [fastq1, fastq2]
+                picardOptions += ["FASTQ='{0}'".format(self.tempName(self.outputDir, fastq1)), \
+                                  "SECOND_END_FASTQ='{0}'".format(self.tempName(self.outputDir, fastq2))]
+                if not self.unpairedFastq:
+                    fastq3 = self.baseName + ".fastq" + self.compressionSuffix
+                    coreFilenames += [fastq3]
+                    picardOptions += ["UNPAIRED_FASTQ='{0}'".format(self.tempName(self.outputDir, fastq3))]
+        else:
+            ## Write just a single FASTQ.
+            fastq = "${0}.fastq{1}".format(self.prefix, self.compressionSuffix)
+            picardOptions += self.tempName(self.outputDir, fastq)
+            coreFilenames= [fastq]
+
+        ## Only process the non-supplementary reads. BWA flags all alternative alignments as supplementary while the full-length
+        ## reads are exactly the ones not flagged supplementary.
+        samtools = local[self.samtoolsBinary]
+        java = local[self.javaBinary]
+        samtools["view", "-b", "-F", "0x800", self.filenameBam] | \
+            java[self.javaOptions, "-jar", self.picardJar, "SamToFastq"] + picardOptions + ["INPUT=/dev/stdin"]
+
+        for name in coreFilenames:
+            srcName = self.tempName(self.outputDir, name)
+            tgtName = self.finalName(self.outputDir, name)
+            mv[srcName, tgtName]
+
+
+    # The following two methods and the "if __name__" are for testing purposes. Thus the plugin can be run without Roddy.
+    def parseBoolean(self, value):
+        if value.ascii_lowercase() in ["true", "t", "1"]:
+            return True
+        elif value.ascii_lowercase() in ["false", "f", "0"]:
+            return False
+        else:
+            raise RuntimeError("Could not parse boolean from '{0}'".format(value))
+
+    def initFromEnvironment(self):
+        # Intermediate files during sorted will be compressed.
+        self.compressIntermediateFastqs = self.parseBoolean(os.getenv("compressIntermediateFastqs", "true"))
+        # Check intermediate/unsorted FASTQs before sorting.
+        self.checkMd5 = self.parseBoolean(os.getenv("checkMd5", "true"))
+        # Extract paired-end reads in separate FASTQs.
+        self.pairedEnd = self.parseBoolean(os.getenv("pairedEnd", "true"))
+        # Additionally write a FASTQ of unpaired reads when processing paired-end data.
+        self.unpairedFastq = self.parseBoolean(os.getenv("unpairedBoolean", "true"))
+        # Each read-group may produce multiple FASTQs. All files will be in one output directory (outputDir/basename/).
+        self.outputPerReadGroup = self.parseBoolean(os.getenv("outputPerReadGroup", "true"))
+        # The @RG tag used to indicate the read group IDs
+        self.readGroupTag = os.getenv("readGroupTag", "id")
+        self.javaBinary = os.getenv("JAVA_BINARY", 'java')
+        self.javaOptions = os.getenv("JAVA_OPTIONS", '-Xms64m -Xmx100m')
+        self.picardJar = os.getenv("PICARD_JAR", 'picard.jar')
+        self.samtoolsBinary = os.getenv("SAMTOOLS_BINARY", 'samtools')
+
+        # Derived parameters
+        self.compressionSuffix = ".gz" if self.compressIntermediateFastqs else ""
+
+        # Parameters usually generated by Roddy.
+        self.outputDir= os.path.dirname(os.getenv("FILENAME_CHECKPOINT"))
+        self.baseName= os.path.basename(os.getenv("FILENAME_CHECKPOINT"), ".checkpoint")
+        self.filenameBam = os.getenv("FILENAME_BAM")
+
+# Test the job without Roddy.
+if __name__ == "main":
+    bam2fastq = Bam2Fastq()
+    bam2fastq.initFromEnvironment()
+    bam2fastq.run()
