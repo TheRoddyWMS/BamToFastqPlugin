@@ -6,7 +6,7 @@
 
 <configuration name='bam2fastqAnalysis' description='Convert BAM file into FASTQs.'
                configurationType='analysis' class='de.dkfz.roddy.core.Analysis'
-               workflowClass='de.dkfz.roddy.bam2fastq.Bam2FastqWorkflow'
+               workflowClass='de.dkfz.roddy.bam2fastq.BamToFastqWorkflow'
                runtimeServiceClass='de.dkfz.b080.co.common.BasicCOProjectsRuntimeService'
                imports="commonCOWorkflowsSettings"
                canCreateTestdata='true'

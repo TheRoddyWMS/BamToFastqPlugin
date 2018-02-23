@@ -7,7 +7,7 @@ package de.dkfz.roddy.bam2fastq;
 
 import de.dkfz.roddy.plugins.BasePlugin;
 
-class Bam2FastqPlugin extends BasePlugin {
+class BamToFastqPlugin extends BasePlugin {
 
     public static final String CURRENT_VERSION_STRING = "0.0.14";
     public static final String CURRENT_VERSION_BUILD_DATE = "Thu Feb 08 14:50:35 CET 2018";

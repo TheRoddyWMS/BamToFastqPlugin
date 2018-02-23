@@ -23,9 +23,9 @@ import groovy.transform.CompileStatic
 import java.util.logging.Level
 
 @CompileStatic
-class Bam2FastqWorkflow extends WorkflowUsingMergedBams {
+class BamToFastqWorkflow extends WorkflowUsingMergedBams {
 
-    public static final LoggerWrapper logger = LoggerWrapper.getLogger("Bam2Fastq")
+    public static final LoggerWrapper logger = LoggerWrapper.getLogger("BamToFastqWorkflow")
 
     public static final String TOOL_BAM_LIST_READ_GROUPS = "bamListReadGroups"
     public static final String TOOL_BAM2FASTQ = "bam2fastq"
@@ -59,12 +59,12 @@ class Bam2FastqWorkflow extends WorkflowUsingMergedBams {
 
         def rgFileIndicesParameter = readGroups.collect { String rg -> [rg + "_R1", rg + "_R2"] }.flatten() as List<String>
 //        def readGroupsParameter = "READGROUPS='${readGroups.join(" ")}'"
-        return callWithOutputFileGroup(TOOL_BAM2FASTQ, controlBam, rgFileIndicesParameter);
+        return callWithOutputFileGroup(TOOL_BAM2FASTQ, controlBam, rgFileIndicesParameter)
     }
 
     void sortFastqs(Config cfg, String readGroup, BaseFile fastq1, BaseFile fastq2) {
         String toolId = cfg.pairedEnd() ? this.TOOL_SORT_FASTQ_PAIR : this.TOOL_SORT_FASTQ_SINGLE
-        call(toolId, fastq1, fastq2, "READGROUP=$readGroup}")
+        call(toolId, fastq1, fastq2, [READGROUP: readGroup])
     }
 
     @Override
@@ -99,7 +99,6 @@ class Bam2FastqWorkflow extends WorkflowUsingMergedBams {
             return true
         }
     }
-
 
     @Override
     protected boolean execute(ExecutionContext context, BasicBamFile bamControlMerged, BasicBamFile bamTumorMerged) {
