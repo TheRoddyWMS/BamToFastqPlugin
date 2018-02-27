@@ -1,20 +1,15 @@
 package de.dkfz.roddy.bam2fastq
+
+import de.dkfz.b080.co.common.WorkflowUsingMergedBams
+
 /*
  * Copyright (c) 2018 DKFZ - ODCF
  *
  * Distributed under the MIT License (license terms are at https://www.github.com/eilslabs/Roddy/LICENSE.txt).
  */
-
-import de.dkfz.b080.co.common.WorkflowUsingMergedBams
 import de.dkfz.b080.co.files.BasicBamFile
 import de.dkfz.roddy.core.ExecutionContext
 import de.dkfz.roddy.core.ExecutionContextError
-import de.dkfz.roddy.execution.io.ExecutionService
-import de.dkfz.roddy.execution.io.fs.FileSystemAccessProvider
-import de.dkfz.roddy.execution.jobs.BEJobResult
-import de.dkfz.roddy.execution.jobs.Job
-import de.dkfz.roddy.execution.jobs.JobManagerOptions
-import de.dkfz.roddy.execution.jobs.direct.synchronousexecution.DirectSynchronousExecutionJobManager
 import de.dkfz.roddy.knowledge.files.BaseFile
 import de.dkfz.roddy.knowledge.files.FileGroup
 import de.dkfz.roddy.tools.LoggerWrapper
@@ -31,9 +26,6 @@ class BamToFastqWorkflow extends WorkflowUsingMergedBams {
     public static final String TOOL_BAM2FASTQ = "bam2fastq"
     public static final String TOOL_SORT_FASTQ_SINGLE = "sortFastqSingle"
     public static final String TOOL_SORT_FASTQ_PAIR = "sortFastqPair"
-    public static final String TOOL_SORT_TMP_COMPRESSOR = "sortTempCompressor"
-    public static final String VAR_SORT_MEMORY = "sortMemory"
-    public static final String VAR_SORT_FASTQ_WITH = "sortFastqWith"
 
     /**
      * Return a list of read-groups identifiers from a bam
@@ -44,12 +36,12 @@ class BamToFastqWorkflow extends WorkflowUsingMergedBams {
         return this.callSynchronized(context, this.TOOL_BAM_LIST_READ_GROUPS, ["BAMFILE": bamfileName] as Map<String, Object>)
     }
 
-//    String getFastqName(Config cfg, String prefix, String readGroup, String index) {
-//        String result = prefix + readGroup + "_r" + index + ".fastq"
-//        if (cfg.compressIntermediateFastqs())
-//            result += ".gz"
-//        return result
-//    }
+    String getFastqName(Config cfg, String prefix, String readGroup, String index) {
+        String result = prefix + readGroup + "_r" + index + ".fastq"
+        if (cfg.compressIntermediateFastqs())
+            result += ".gz"
+        return result
+    }
 
     /**
      * Extract FASTQs from a BAM. This may be with or without read-groups. The names of the output files depend on the parameters.
@@ -63,7 +55,7 @@ class BamToFastqWorkflow extends WorkflowUsingMergedBams {
     }
 
     void sortFastqs(Config cfg, String readGroup, BaseFile fastq1, BaseFile fastq2) {
-        String toolId = cfg.pairedEnd() ? this.TOOL_SORT_FASTQ_PAIR : this.TOOL_SORT_FASTQ_SINGLE
+        String toolId = cfg.pairedEnd() ? TOOL_SORT_FASTQ_PAIR : TOOL_SORT_FASTQ_SINGLE
         call(toolId, fastq1, fastq2, [READGROUP: readGroup])
     }
 
@@ -85,15 +77,17 @@ class BamToFastqWorkflow extends WorkflowUsingMergedBams {
                 }
                 FileGroup out = extractFastqsFromBam(cfg, basicBamFile, readGroups)
 
-                if (cfg.sortFastqs())
+                if (cfg.sortFastqs()) {
                     for (int i = 0; i < readGroups.size(); i++) {
                         this.sortFastqs(cfg, readGroups[i], out[i * 2], out[i * 2 + 1]) // All paired end, sorted by ReadGroup.
                     }
-//            } else {
-//                this.extractFastqsFromBam(cfg, basicBamFile)
+                }
+                println(out)
+
+            } else {
+//                FileGroup out = extractFastqsFromBam(cfg, basicBamFile)
 //                if (cfg.sortFastqs())
 //                    this.sortFastqs(cfg)
-                println(out)
             }
 
             return true

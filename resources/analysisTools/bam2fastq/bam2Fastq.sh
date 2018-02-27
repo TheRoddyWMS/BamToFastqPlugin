@@ -7,23 +7,25 @@
 #
 # Environment variables:
 #
-# FILENAME_LANEFILES: A bash array containing all lane files which are expected to be available after this script ran.
 # FILENAME_BAM: input BAM file
-# compressIntermediateResults: temporary files during sorting are compressed or not (gz), default: true
-# PICARD_OPTIONS: additional options to picard. May be overridden by options added here.
-# JAVA_BINARY: java binary name/path
-# JAVA_OPTIONS: defaults to JAVA_OPTS.
-# checkMd5: Create MD5 file of output FASTQs
-# outputPerReadGroup: write separate FASTQs for each read group into $outputDir/$basename/ directory. Otherwise
+# FILENAME_LANEFILES: A bash array containing the filenames of the output files expected to be available after this script ran.
+#                     Note that this variable needs do be string, no true Bash-array, because exporting Bash arrays to sub-processes in dysfunctional.
+# compressIntermediateResults: Temporary files during sorting are compressed or not (gz), default: true
+# PICARD_OPTIONS: Additional options for picard.
+# JAVA_BINARY: Java binary name/path.
+# JAVA_OPTIONS: Defaults to JAVA_OPTS.
+# outputPerReadGroup: Write separate FASTQs for each read group into $outputDir/$basename/ directory. Otherwise
 #                     create $outputDir/${basename}_r{1,2}.fastq{.gz,} files.
-# unpairedFastq: additionally write a FASTQ with unpaired reads. Otherwise no such file is written.
+# unpairedFastq: Additionally write a FASTQ with unpaired reads. Otherwise no such file is written.
 
 
 source "$TOOL_BASH_LIB"
 
 set -uvex
 
-# Re-Array the filenames variable, Bash does not transfer arrays properly to sub processes and the variable is exported in the wrapper.
+JAVA_OPTIONS="${JAVA_OPTIONS:-$JAVA_OPTS}"
+
+# Re-Array the filenames variable, Bash does not transfer arrays properly to subprocesses.
 declare -ax FILENAME_LANEFILES=${FILENAME_LANEFILES}
 
 compressIntermediateFastqs="${compressIntermediateFastqs:-true}"
@@ -34,13 +36,11 @@ else
 fi
 FASTQ_SUFFIX=".fastq${compressionSuffix}"
 
-# Extract the output directory with the first lane file path entered.
-outputDir=$(dirname "${FILENAME_LANEFILES[0]}" )
-baseName=$(basename "${FILENAME_LANEFILES[0]}" .${FASTQ_SUFFIX})
+# Extract the output directory from the first lane file path entered.
+outputDir=$(dirname "${FILENAME_LANEFILES[0]}")
+baseName=$(basename "${FILENAME_LANEFILES[0]}" ".${FASTQ_SUFFIX}")
 
-JAVA_OPTIONS="${JAVA_OPTIONS:-$JAVA_OPTS}"
-
-## Unfortunately, picard only packs the files, if they end in .gz. Therefore the temp-files have to use a different
+## Unfortunately, Picard only packs the files, if they end in .gz. Therefore the temp-files have to use a different
 ## naming convention than a suffix.
 declare -a coreFilenames=()
 
@@ -85,8 +85,6 @@ else
     coreFilenames=("$fastq")
 fi
 
-#$JAVA_BINARY" "$JAVA_OPTIONS" -jar "$PICARD_JAR
-
 ## Only process the non-supplementary reads. BWA flags all alternative alignments as supplementary while the full-length
 ## reads are exactly the ones not flagged supplementary.
 "$SAMTOOLS_BINARY" view -u -F 0x800 "$FILENAME_BAM" \
@@ -95,6 +93,7 @@ fi
       $PICARD_OPTIONS \
       INPUT=/dev/stdin
 
+## Move result files.
 for name in ${coreFilenames[@]}; do
     srcName=$(makeTempName "$outputDir" "$name")
     tgtName=$(makeFinalName "$outputDir" "$name")

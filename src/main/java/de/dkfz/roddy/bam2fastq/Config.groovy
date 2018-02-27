@@ -4,9 +4,6 @@ package de.dkfz.roddy.bam2fastq
  *
  * Distributed under the MIT License (license terms are at https://www.github.com/eilslabs/Roddy/LICENSE.txt).
  */
-
-import de.dkfz.b080.co.files.COConstants
-import de.dkfz.roddy.config.Configuration
 import de.dkfz.roddy.config.RecursiveOverridableMapContainerForConfigurationValues
 import de.dkfz.roddy.core.ExecutionContext
 import groovy.transform.CompileStatic
@@ -25,19 +22,19 @@ class Config {
     }
 
     boolean outputPerReadGroup() {
-        this.configValues.getBoolean(this.FLAG_SPLIT_BY_READ_GROUP, true)
+        this.configValues.getBoolean(FLAG_SPLIT_BY_READ_GROUP, true)
     }
 
     boolean sortFastqs() {
-        this.configValues.getBoolean(this.FLAG_SORT_FASTQS, true)
+        this.configValues.getBoolean(FLAG_SORT_FASTQS, true)
     }
 
     boolean compressIntermediateFastqs() {
-        this.configValues.getBoolean(this.FLAG_COMPRESS_INTERMEDIATE_FASTQS, true)
+        this.configValues.getBoolean(FLAG_COMPRESS_INTERMEDIATE_FASTQS, true)
     }
 
     boolean pairedEnd() {
-        this.configValues.getBoolean(this.FLAG_PAIRED_END, true)
+        this.configValues.getBoolean(FLAG_PAIRED_END, true)
 
     }
 }

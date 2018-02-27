@@ -15,58 +15,56 @@
                cleanupScript="">
     <configurationvalues>
 
-        <!--<cvalue name='RSCRIPT_VERSION' value='3.0.0' type="string"/>-->
-        <!--<cvalue name='PERL_VERSION' value='5.20.2' type="string"/>-->
+        <cvalue name='workflowEnvironmentScript' value="workflowEnvironment_conda" type='string'/>
         <cvalue name='SAMTOOLS_VERSION' value='1.2' type="string"/>
-        <cvalue name='PICARD_VERSION' value='1.61' type="string"/>
+        <cvalue name='PICARD_VERSION' value='2.13.2' type="string"/>
         <cvalue name='JAVA_VERSION' value='1.8.0_131' type="string"/>
-        <!--<cvalue name='PYTHON_VERSION' value='2.7.9' type="string"/>-->
-        <!--<cvalue name='BEDTOOLS_VERSION' value='2.16.2' type="string"/>-->
 
+        <cvalue name="fastqOutputDirectory" value="${outputAnalysisBaseDirectory}/${pid}/${sample}/${SEQUENCER_PROTOCOL}/"
+                description="To write files to e.g. outpath/bamFileBasename use just '${outputAnalysisBaseDirectory}'."/>
+
+        <cvalue name="pairedEnd" value="true" type="boolean"
+                description="Whether the input BAMs are paired end BAMs."/>
+        <cvalue name="unpairedFastq" value="false" type="boolean"
+                description="Write unpaired reads into a dedicated FASTQ. Only possible if pairedEnd=true. If 'false' these reads are discarded!"/>
+
+        <cvalue name="PICARD_OPTIONS" value="VALIDATION_STRINGENCY=SILENT CREATE_MD5_FILE=${checkFastqMd5} USE_JDK_DEFLATER=true USE_JDK_INFLATER=true"
+                description="On Intel machines better set the USE_JDK_INFLATER and USE_JDK_DEFLATER options to 'false'. Only relevant if compressIntermediateFastqs=true."/>
         <cvalue name="JAVA_OPTIONS" value="-Xms64m -Xmx32G"
                 description="Picard uses memory for collating paired reads."/>
-        <!--<cvalue name="SAMTOOLS_BINARY" value="samtools-1.2" type="string"-->
-        <!--description="Samtools is used for extracting the read-group names from the BAM and for restricting to non-supplementary reads."/>-->
-        <cvalue name="PICARD_OPTIONS" value="VALIDATION_STRINGENCY=SILENT CREATE_MD5_FILE=${checkMd5} USE_JDK_DEFLATER=true USE_JDK_INFLATER=true"/>
-        <!--<cvalue name="PICARD_JAR" value="/home/kensche/picard.jar" type="string"-->
-        <!--description="The Picard tools used for sorting. Versions below XXXX do not support compression of the FASTQs."/>-->
-
-        <cvalue name='workflowEnvironmentScript' value="workflowEnvironment_tbiLsf" type='string'/>
-        <cvalue name="fastqOutputDirectory" value="${outputAnalysisBaseDirectory}/${pid}/${sample}/${SEQUENCER_PROTOCOL}/"
-                description="To write files to e.g. outpath/bamFileBasename use ${outputAnalysisBaseDirectory}"/>
-
-        <cvalue name='splitByReadGroup' value='true' type='boolean'/>
-        <cvalue name='sortFastqsWith' value='coreutils' type='boolean'
-                description='Currently only coreutils.'/>
-        <cvalue name='sortMemory' value='10g' type="string"
-                description="Memory used for storing data while sorting. Is passed to the sorting tool and should follow its required syntax. WARNING: Also adapt the job requirements!"/>
-        <cvalue name='sortTmpCompressor' value='gzip' type="string"
-                description="Compression tool. Needs to compress the stdin and write to stdout without options"/>
-        <cvalue name="checkMd5" value="true" type="boolean"/>
 
         <cvalue name="compressIntermediateFastqs" value="true" type="boolean"
-                description="Intermediate files may be compressed. Default: true"/>
+                description="Intermediate files produced by Picard (probably position-sorted) may be compressed. Default: true"/>
+
+        <!-- Sorting configuration: coreutils sort -->
+        <cvalue name="sortFastqs" value="true" type="boolean"
+                description="Whether to sort the output FASTQs."/>
+        <cvalue name='sortFastqsWith' value='coreutils' type='boolean'
+                description='Currently only coreutils, which uses coreutils "sort".'/>
+        <cvalue name="checkFastqMd5" value="true" type="boolean"
+                description="While reading in intermediate FASTQs, check that the MD5 is the same as in the accompanied '.md5' file."/>
+        <cvalue name='sortTmpCompressor' value='gzip' type="string"
+                description="Compression tool for temporary files created by coreutils sort. Needs to compress the stdin and write to stdout without options. By using pigz or pbzip2 (maybe wrapped) you can increase the number of cores used for compression."/>
+        <cvalue name='sortMemory' value='10g' type="string"
+                description="Memory used for storing data while sorting. Is passed to the sorting tool and should follow its required syntax. WARNING: Also adapt the job requirements!"/>
+
+
+        <cvalue name='splitByReadGroup' value='true' type='boolean'
+                description="Should separate FASTQs be created per read group? 'true' is more performant."/>
         <cvalue name="outputPerReadGroup" value="true" type="boolean"
                 description="Create one or two FASTQs per read-group for single- or paired-end BAMs, respectively. Default: true."/>
         <cvalue name="readGroupTag" value="id" type="string"
                 description="Name of the tag in the BAM header containing the name of the read-group. Default: id"/>
-        <cvalue name="pairedEnd" value="true" type="boolean"
-                description="Whether the input BAMs are paired end BAMs."/>
-        <cvalue name="unpairedFastq" value="false" type="boolean"
-                description="Write unpaired reads FASTQ. Only possible if pairedEnd=true."/>
-
 
     </configurationvalues>
 
     <processingTools>
         <tool name='workflowEnvironment_tbiLsf' value="tbi-lsf-cluster.sh" basepath='bam2fastq/environments'/>
         <tool name="bamListReadGroups" value="bamListReadGroups.sh" basepath="bam2fastq"/>
-        <!--<input type="file" typeof="BasicBamFile" scriptparameter="BAMFILE" />-->
-        <!--</tool>-->
         <tool name="bashLib" value="bashLib.sh" basepath="bam2fastq"/>
         <tool name="workflowLib" value="workflowLib.sh" basepath="bam2fastq"/>
         <tool name="picard" value="picard_2.13.2.jar" basepath="bam2fastqTools"/>
-        <tool name="bam2fastq" value="bam2Fastq.sh" basepath="bam2fastq">TextFile
+        <tool name="bam2fastq" value="bam2Fastq.sh" basepath="bam2fastq">
             <resourcesets>
                 <rset size="t" memory="40" cores="2" nodes="1" walltime="00:10:00"/>
                 <rset size="l" memory="40" cores="2" nodes="1" walltime="10:00:00"/>
@@ -74,7 +72,7 @@
             <input type="file" typeof="BasicBamFile" scriptparameter='FILENAME_BAM'/>
             <output type="filegroup" fileclass="TextFile" scriptparameter='FILENAME_LANEFILES' check="true" passas="array"/>
         </tool>
-        <tool name='sortFastqSingle' value='sortFastqSingle.sh' basepath="bam2fastq">
+        <tool name='sortFastqSingle' value='coreutilsSortFastqSingle.sh' basepath="bam2fastq">
             <resourcesets>
                 <rset size="t" memory="0.1" cores="1" nodes="1" walltime="00:10:00"/>
                 <rset size="l" memory="5G" cores="8" nodes="1" walltime="10:00:00"/>
@@ -82,7 +80,7 @@
             <input type="file" typeof="TextFile" scriptparameter='FILENAME_FASTQ'/>
             <output type="file" typeof="TextFile" scriptparameter='FILENAME_SORTED_FASTQ' check="true"/>
         </tool>
-        <tool name='sortFastqPair' value='sortFastqPair.sh' basepath="bam2fastq">
+        <tool name='sortFastqPair' value='coreutilsSortFastqPair.sh' basepath="bam2fastq">
             <resourcesets>
                 <rset size="t" memory="0.1" cores="1" nodes="1" walltime="00:10:00"/>
                 <rset size="l" memory="10G" cores="8" nodes="1" walltime="10:00:00"/>
