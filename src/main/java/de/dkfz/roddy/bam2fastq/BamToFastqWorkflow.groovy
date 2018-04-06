@@ -1,26 +1,30 @@
 package de.dkfz.roddy.bam2fastq
 
-import de.dkfz.b080.co.common.WorkflowUsingMergedBams
+import de.dkfz.b080.co.common.BasicCOProjectsRuntimeService
+import de.dkfz.b080.co.files.BasicBamFile
 
 /*
  * Copyright (c) 2018 DKFZ - ODCF
  *
  * Distributed under the MIT License (license terms are at https://www.github.com/eilslabs/Roddy/LICENSE.txt).
  */
-import de.dkfz.b080.co.files.BasicBamFile
 import de.dkfz.roddy.core.ExecutionContext
 import de.dkfz.roddy.core.ExecutionContextError
+import de.dkfz.roddy.core.Workflow
 import de.dkfz.roddy.knowledge.files.BaseFile
 import de.dkfz.roddy.knowledge.files.FileGroup
 import de.dkfz.roddy.tools.LoggerWrapper
 import groovy.transform.CompileStatic
+import sun.reflect.generics.reflectiveObjects.NotImplementedException
 
 import java.util.logging.Level
 
 @CompileStatic
-class BamToFastqWorkflow extends WorkflowUsingMergedBams {
+class BamToFastqWorkflow extends Workflow {
 
     public static final LoggerWrapper logger = LoggerWrapper.getLogger("BamToFastqWorkflow")
+
+    private List<BasicBamFile> bamFiles = []
 
     public static final String TOOL_BAM_LIST_READ_GROUPS = "bamListReadGroups"
     public static final String TOOL_BAM2FASTQ = "bam2fastq"
@@ -32,13 +36,18 @@ class BamToFastqWorkflow extends WorkflowUsingMergedBams {
      * @param context
      * @param bamfileName
      */
+    private final synchronized Map<String,List<String>> cachedBamFileLists = [:]
     List<String> listReadGroups(ExecutionContext context, String bamfileName) {
-        return this.callSynchronized(context, this.TOOL_BAM_LIST_READ_GROUPS, ["BAMFILE": bamfileName] as Map<String, Object>)
+        String dataSetId = context.dataSet.id
+        if (!cachedBamFileLists.containsKey(dataSetId)) {
+            cachedBamFileLists[dataSetId] = callSynchronized(context, TOOL_BAM_LIST_READ_GROUPS, ["BAMFILE": bamfileName] as Map<String, Object>)
+        }
+        return cachedBamFileLists[dataSetId]
     }
 
     String getFastqName(Config cfg, String prefix, String readGroup, String index) {
         String result = prefix + readGroup + "_r" + index + ".fastq"
-        if (cfg.compressIntermediateFastqs())
+        if (cfg.compressIntermediateFastqs)
             result += ".gz"
         return result
     }
@@ -46,56 +55,81 @@ class BamToFastqWorkflow extends WorkflowUsingMergedBams {
     /**
      * Extract FASTQs from a BAM. This may be with or without read-groups. The names of the output files depend on the parameters.
      */
-    FileGroup extractFastqsFromBam(Config config, BasicBamFile controlBam, List<String> readGroups) {
-        // Now it depends if we have single or paired end data... Let's start with paired end and create proper indices for it.
-
-        def rgFileIndicesParameter = readGroups.collect { String rg -> [rg + "_R1", rg + "_R2"] }.flatten() as List<String>
-//        def readGroupsParameter = "READGROUPS='${readGroups.join(" ")}'"
-        return callWithOutputFileGroup(TOOL_BAM2FASTQ, controlBam, rgFileIndicesParameter)
+    FileGroup bam2fastq(Config config, BasicBamFile controlBam, List<String> readGroups) {
+        if (config.pairedEnd) {
+            def rgFileIndicesParameter = readGroups.collect { String rg -> [rg + "_R1", rg + "_R2"] }.flatten() as List<String>
+            return callWithOutputFileGroup(TOOL_BAM2FASTQ, controlBam, rgFileIndicesParameter)
+        } else {
+            throw new NotImplementedException()
+        }
     }
 
-    void sortFastqs(Config cfg, String readGroup, BaseFile fastq1, BaseFile fastq2) {
-        String toolId = cfg.pairedEnd() ? TOOL_SORT_FASTQ_PAIR : TOOL_SORT_FASTQ_SINGLE
-        call(toolId, fastq1, fastq2, [READGROUP: readGroup])
-    }
-
-    @Override
-    boolean execute(ExecutionContext context) {
-        BasicBamFile[] initialBamFiles = loadInitialBamFilesForDataset(context)
-        if (!checkInitialFiles(context, initialBamFiles))
-            return false
-
-        Config cfg = new Config(context)
-
-        for (BasicBamFile basicBamFile : initialBamFiles) {
-
-            if (cfg.outputPerReadGroup()) {
-                List<String> readGroups = listReadGroups(context, basicBamFile.absolutePath)
-                if (!readGroups) {
-                    context.addErrorEntry(ExecutionContextError.EXECUTION_NOINPUTDATA.expand("Bam file ${basicBamFile.path} does not contain any readgroup.", Level.WARNING))
-                    continue;
-                }
-                FileGroup out = extractFastqsFromBam(cfg, basicBamFile, readGroups)
-
-                if (cfg.sortFastqs()) {
-                    for (int i = 0; i < readGroups.size(); i++) {
-                        this.sortFastqs(cfg, readGroups[i], out[i * 2], out[i * 2 + 1]) // All paired end, sorted by ReadGroup.
-                    }
-                }
-                println(out)
-
+    void sortFastqs(Config cfg, String readGroup, BaseFile fastq1, BaseFile fastq2 = null, BaseFile fastq3 = null) {
+        assert(fastq1 != fastq2)
+        assert(fastq1 != fastq3)
+        assert(fastq2 == null || fastq2 != fastq3)
+        if (cfg.pairedEnd) {
+            if (!cfg.unpairedFastq) {
+                call(TOOL_SORT_FASTQ_PAIR, fastq1, fastq2, [readGroup: readGroup])
             } else {
-//                FileGroup out = extractFastqsFromBam(cfg, basicBamFile)
-//                if (cfg.sortFastqs())
-//                    this.sortFastqs(cfg)
+                throw new NotImplementedException()
             }
-
-            return true
+        } else {
+            call(TOOL_SORT_FASTQ_PAIR, fastq1, [readGroup: readGroup])
         }
     }
 
     @Override
-    protected boolean execute(ExecutionContext context, BasicBamFile bamControlMerged, BasicBamFile bamTumorMerged) {
-        return false
+    boolean setupExecution(ExecutionContext context) {
+        bamFiles = (context.runtimeService as BasicCOProjectsRuntimeService).getAllBamFiles(context)
+        return bamFiles.size() > 0
+    }
+
+    @Override
+    boolean execute(ExecutionContext context) {
+        Config cfg = new Config(context)
+
+        for (BasicBamFile basicBamFile : bamFiles) {
+
+            if (cfg.outputPerReadGroup) {
+                List<String> readGroups = listReadGroups(context, basicBamFile.absolutePath)
+                if (!readGroups) {
+                    context.addErrorEntry(ExecutionContextError.EXECUTION_NOINPUTDATA.expand("Bam file ${basicBamFile.path} does not contain any readgroup.", Level.WARNING))
+                    continue
+                }
+                FileGroup out = bam2fastq(cfg, basicBamFile, readGroups)
+
+                if (cfg.sortFastqs) {
+                    for (int i = 0; i < readGroups.size(); i++) {
+                        this.sortFastqs(cfg, readGroups[i], out[i * 2], out[i * 2 + 1]) // All paired end, sorted by ReadGroup.
+                    }
+                }
+
+            } else {
+//                FileGroup out = bam2fastq(cfg, basicBamFile)
+//                if (cfg.sortFastqs())
+//                    this.sortFastqs(cfg)
+            }
+
+        }
+
+        return true
+    }
+
+    protected boolean checkBamFiles(ExecutionContext context) {
+        if (!bamFiles) {
+            context.addErrorEntry(ExecutionContextError.EXECUTION_NOINPUTDATA.expand("Did not find any BAM files."))
+            return false
+        }
+        return bamFiles.collect { file ->
+            context.fileIsAccessible(file.path)
+        }.inject { res, i -> res && i }
+    }
+
+    @Override
+    boolean checkExecutability(ExecutionContext context) {
+        boolean result = super.checkExecutability(context)
+        result &= checkBamFiles(context)
+        return result
     }
 }

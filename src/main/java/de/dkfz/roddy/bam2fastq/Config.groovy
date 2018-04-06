@@ -15,26 +15,32 @@ class Config {
     public static final String FLAG_SORT_FASTQS = "sortFastqs"
     public static final String FLAG_COMPRESS_INTERMEDIATE_FASTQS = "compressIntermediateFastqs"
     public static final String FLAG_PAIRED_END = "pairedEnd"
+    public static final String FLAG_UNPAIRED_FASTQ = "unpairedFastq"
+
     private RecursiveOverridableMapContainerForConfigurationValues configValues
 
     Config(ExecutionContext executionContext) {
         this.configValues = executionContext.getConfigurationValues()
     }
 
-    boolean outputPerReadGroup() {
+    boolean getOutputPerReadGroup() {
         this.configValues.getBoolean(FLAG_SPLIT_BY_READ_GROUP, true)
     }
 
-    boolean sortFastqs() {
+    boolean getSortFastqs() {
         this.configValues.getBoolean(FLAG_SORT_FASTQS, true)
     }
 
-    boolean compressIntermediateFastqs() {
+    boolean getCompressIntermediateFastqs() {
         this.configValues.getBoolean(FLAG_COMPRESS_INTERMEDIATE_FASTQS, true)
     }
 
-    boolean pairedEnd() {
+    boolean getPairedEnd() {
         this.configValues.getBoolean(FLAG_PAIRED_END, true)
 
+    }
+
+    boolean getUnpairedFastq() {
+        this.configValues.getBoolean(FLAG_UNPAIRED_FASTQ, false)
     }
 }

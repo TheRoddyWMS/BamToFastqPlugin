@@ -1,0 +1,4 @@
+manifest.tmp
+build/
+out/
+*.jar

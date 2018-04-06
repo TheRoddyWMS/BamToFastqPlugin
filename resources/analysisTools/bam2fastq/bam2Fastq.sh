@@ -19,83 +19,130 @@
 # unpairedFastq: Additionally write a FASTQ with unpaired reads. Otherwise no such file is written.
 
 
-source "$TOOL_BASH_LIB"
-
+source "$TOOL_WORKFLOW_LIB"
+printInfo
+set -o pipefail
 set -uvex
-
-JAVA_OPTIONS="${JAVA_OPTIONS:-$JAVA_OPTS}"
-
-# Re-Array the filenames variable, Bash does not transfer arrays properly to subprocesses.
-declare -ax FILENAME_LANEFILES=${FILENAME_LANEFILES}
-
-compressIntermediateFastqs="${compressIntermediateFastqs:-true}"
-if [[ "$compressIntermediateFastqs" == true ]]; then
-    compressionSuffix=".gz"
-else
-    compressionSuffix=""
-fi
-FASTQ_SUFFIX=".fastq${compressionSuffix}"
-
-# Extract the output directory from the first lane file path entered.
-outputDir=$(dirname "${FILENAME_LANEFILES[0]}")
-baseName=$(basename "${FILENAME_LANEFILES[0]}" ".${FASTQ_SUFFIX}")
-
-## Unfortunately, Picard only packs the files, if they end in .gz. Therefore the temp-files have to use a different
-## naming convention than a suffix.
-declare -a coreFilenames=()
 
 makeTempName() {
     local dir="${1:?Missing argument}"
     local baseName="${2:?Missing argument}"
-    echo "$dir/tmp.$baseName"
+    # We use a tmp. prefix because Picard depends on the .gz suffix for determining the compression.
+    local tempName="$dir/tmp.$baseName"
+    registerTmpFile "$tempName"
+    echo "$tempName"
 }
 
-makeFinalName() {
-    local dir="${1:?Missing argument}"
-    local baseName="${2:?Missing argument}"
-    echo "$dir/$baseName"
-}
-
-## Set up the picard options. That's a bit involved, as it has to follow the involved picard logic.
-PICARD_OPTIONS="$PICARD_OPTIONS COMPRESS_OUTPUTS_PER_RG=$compressIntermediateFastqs"
-if [[ "${pairedEnd:-true}" == true ]]; then
-    if [[ "${outputPerReadGroup:-true}" == true ]]; then
-        ## Write all read-group FASTQs into a directory.
-        coreFilenames=("$baseName")
-        tmpDir=$(makeTempName "$outputDir" "$baseName")
-        PICARD_OPTIONS="$PICARD_OPTIONS OUTPUT_PER_RG=$outputPerReadGroup RG_TAG=${readGroupTag:-id} OUTPUT_DIR=${tmpDir}"
-        ## RoddyCore does not know anything about the temporary directory. Therefore we need to create it here.
-        mkdir -p "$tmpDir" || throw 1 "Could not create output directory '$tmpDir'"
+getFastqSuffix() {
+    if [[ "$compressIntermediateFastqs" == true ]]; then
+        compressionSuffix=".gz"
     else
-        ## Write just 2-3 FASTQs, depending on whether unpairedFastq is true.
-        fastq1="${baseName}_r1.${FASTQ_SUFFIX}"
-        fastq2="${baseName}_r2.${FASTQ_SUFFIX}"
-        coreFilenames=("$fastq1" "$fastq2")
-        PICARD_OPTIONS="$PICARD_OPTIONS FASTQ=$(makeTempName "$outputDir" "$fastq1") SECOND_END_FASTQ=$(makeTempName "$outputDir" "$fastq2")"
-        if [[ "${unpairedFastq:-false}" == true ]]; then
-            fastq3="${baseName}.${FASTQ_SUFFIX}"
-            coreFilenames=(${coreFilenames[@]} $fastq3)
-            PICARD_OPTIONS="$PICARD_OPTIONS UNPAIRED_FASTQ=$(makeTempName "$outputDir" "$fastq3")"
+        compressionSuffix=""
+    fi
+    echo "fastq${compressionSuffix}"
+}
+
+processPairedEndWithReadGroups() {
+    ## Write all read-group FASTQs into a directory.
+    tmpReadGroupDir="$outputAnalysisBaseDirectory"/$(basename "$FILENAME_BAM")".fastq"
+    registerTmpFile "$tmpReadGroupDir"
+    mkdir -p "$tmpReadGroupDir" || throw 1 "Could not create output directory '$tmpReadGroupDir'"
+
+
+    PICARD_OPTIONS="$PICARD_OPTIONS COMPRESS_OUTPUTS_PER_RG=$compressIntermediateFastqs OUTPUT_PER_RG=true RG_TAG=${readGroupTag:-id} OUTPUT_DIR=${tmpReadGroupDir}"
+    JAVA_OPTIONS="${JAVA_OPTIONS:-$JAVA_OPTS}"
+    ## Only process the non-supplementary reads (-F 0x800). BWA flags all alternative alignments as supplementary while the full-length
+    ## reads are exactly the ones not flagged supplementary.
+    "$SAMTOOLS_BINARY" view -u -F 0x800 "$FILENAME_BAM" \
+        | "$PICARD_BINARY" $JAVA_OPTIONS SamToFastq $PICARD_OPTIONS INPUT=/dev/stdin
+
+    ## Now make sure that the output files of Picard are renamed correctly.
+    for readGroup in $(BAMFILE="${FILENAME_BAM}" "${TOOL_BAM_LIST_READ_GROUPS}"); do
+        for read in 1 2; do
+            srcName="$tmpReadGroupDir/${readGroup}_${read}.$FASTQ_SUFFIX"
+
+            baseName=$(basename "$FILENAME_BAM" .bam)
+            fgindex="${readGroup}_R${read}"
+            ## Note that this corresponds to the filename pattern in the XML! We compose the output lane file, because we want to avoid
+            ## that read groups are confused or that we have to parse the FILENAME_LANEFILES here.
+            tgtName="$outputAnalysisBaseDirectory/${fgindex}_unsorted/${baseName}_${fgindex}.$FASTQ_SUFFIX"
+
+            mv "$srcName" "$tgtName" || throw 10 "Could not move file '$srcName' to '$tgtName'"
+        done
+    done
+}
+
+
+processPairedEndWithoutReadGroups() {
+    ## Extract the output directory from the first lane file path entered.
+    outputDir=$(dirname "$outputAnalysisBaseDirectory")/$(basename "$FILENAME_BAM")".fastq"
+    registerTmpFile "$outputDir"
+
+    baseName=$(basename "$FILENAME_BAM" .bam)
+
+    ## Write just 2-3 FASTQs, depending on whether unpairedFastq is true.
+    ## We need to add the suffix here such that Picard automatically does the compression.
+    fastq1BaseName="${baseName}_r1.${FASTQ_SUFFIX}"
+    tmpFastq1=$(makeTempName "$outputDir" "$fastq1BaseName")
+    fastq2BaseName="${baseName}_r2.${FASTQ_SUFFIX}"
+    tmpFastq2=$(makeTempName "$outputDir" "$fastq2BaseName")
+    PICARD_OPTIONS="$PICARD_OPTIONS COMPRESS_OUTPUTS_PER_RG=$compressIntermediateFastqs FASTQ=$tmpFastq1 SECOND_END_FASTQ=$tmpFastq2"
+    if [[ "${unpairedFastq:-false}" == true ]]; then
+        fastq3BaseName="${baseName}_r3.${FASTQ_SUFFIX}"
+        tmpFastq3=$(makeTempName "$outputDir" "$fastq3BaseName")
+        PICARD_OPTIONS="$PICARD_OPTIONS UNPAIRED_FASTQ=$tmpFastq3"
+    fi
+
+    ## Only process the non-supplementary reads (-F 0x800). BWA flags all alternative alignments as supplementary while the full-length
+    ## reads are exactly the ones not flagged supplementary.
+    JAVA_OPTIONS="${JAVA_OPTIONS:-$JAVA_OPTS}"
+    "$SAMTOOLS_BINARY" view -u -F 0x800 "$FILENAME_BAM" \
+        | "$PICARD_BINARY" $JAVA_OPTIONS SamToFastq $PICARD_OPTIONS INPUT=/dev/stdin
+
+    ## Now make sure that the output files of Picard are renamed correctly.
+    mv "$tmpFastq1" "${FILENAME_LANEFILES[0]}" || throw 10 "Could not move file '$tmpFastq1' to '${FILENAME_LANEFILES[0]}'"
+    mv "$tmpFastq2" "${FILENAME_LANEFILES[1]}" || throw 10 "Could not move file '$tmpFastq2' to '${FILENAME_LANEFILES[1]}'"
+    if [[ "${unpairedFastq:-false}" == true ]]; then
+        mv "$tmpFastq3" "${FILENAME_LANEFILES[2]}" || throw 10 "Could not move file '$tmpFastq3' to '${FILENAME_LANEFILES[2]}'"
+    fi
+}
+
+processSingleEndWithReadGroups() {
+    throw 1 "processSingleEndWithReadGroups not implemented"
+}
+
+processSingleEndWithoutReadGroups() {
+    throw 1 "processSingleEndWithoutReadGroups not implemented"
+}
+
+
+
+main() {
+    setUp_BashSucksVersion
+
+    # Re-Array the filenames variable (outputs). Bash does not transfer arrays properly to subprocesses. Therefore Roddy encodes arrays as strings.
+    declare -ax FILENAME_LANEFILES=${FILENAME_LANEFILES}
+
+    FASTQ_SUFFIX=$(getFastqSuffix)
+
+
+    if [[ "${pairedEnd:-true}" == true ]]; then
+        if [[ "${outputPerReadGroup:-true}" == true ]]; then
+            processPairedEndWithReadGroups
+        else
+            processPairedEndWithoutReadGroups
+        fi
+    else
+        if [[ "${outputPerReadGroup:-true}" == true ]]; then
+            processSingleEndWithReadGroups
+        else
+            processSingleEndWithoutReadGroups
         fi
     fi
-else
-    ## Write just a single FASTQ.
-    fastq="${prefix}.${FASTQ_SUFFIX}"
-    PICARD_OPTIONS="$PICARD_OPTIONS FASTQ=$(makeTempName "$outputDir" "$fastq}")"
-    coreFilenames=("$fastq")
-fi
 
-## Only process the non-supplementary reads. BWA flags all alternative alignments as supplementary while the full-length
-## reads are exactly the ones not flagged supplementary.
-"$SAMTOOLS_BINARY" view -u -F 0x800 "$FILENAME_BAM" \
-    | "$JAVA_BINARY" $JAVA_OPTIONS -jar "${TOOL_PICARD}" \
-      SamToFastq \
-      $PICARD_OPTIONS \
-      INPUT=/dev/stdin
+    cleanUp_BashSucksVersion
+}
 
-## Move result files.
-for name in ${coreFilenames[@]}; do
-    srcName=$(makeTempName "$outputDir" "$name")
-    tgtName=$(makeFinalName "$outputDir" "$name")
-    mv "$srcName" "$tgtName" || throw 10 "Could not move file '$srcName' to '$tgtName'"
-done
+
+
+main

@@ -11,6 +11,18 @@ WORKFLOWLIB___SHELL_OPTIONS=$(set +o)
 set +o verbose
 set +o xtrace
 
+
+debug() {
+    test "${debug:-false}" == "true"
+}
+
+mkFifo() {
+    local fifo="${1:?No fifo name given}"
+    if [[ ! -p "$fifo" ]]; then
+        mkfifo "$fifo"
+    fi
+}
+
 mbuf () {
     local bufferSize="$1"
     shift
@@ -25,26 +37,68 @@ registerPid() {
 
 registerTmpFile() {
     local tmpFile="${1:?No temporary file name to register}"
-    declare -gax tmpFiles=(${tmpFiles[@]} "$tmpFile")
+    # Note that the array is build in reversed order, which simplifies the deletion of nested directories.
+    declare -gax tmpFiles=("$tmpFile" "${tmpFiles[@]}")
 }
 
+reverseArray() {
+    local c=""
+    for b in "$@"; do
+        c="$b $c"
+    done
+    echo $c
+}
+
+# Bash sucks. An empty array does not exist! So if there are no tempfiles, then there is no array and set -u will show an error!
+# Therefore we put a dummy value into the arrays.
+waitForAll_BashSucksVersion() {
+    jobs
+    declare -a realPids=${pids[@]:1:${#pids[@]}}
+    wait ${realPids[@]}
+    pids=(dummy)
+}
+setUp_BashSucksVersion() {
+    declare -g -a -x tmpFiles=(dummy)
+    declare -g -a -x pids=(dummy)
+}
+cleanUp_BashSucksVersion() {
+    if [[ !debug && -v tmpFiles && ${#tmpFiles} -gt 1 ]]; then
+        # Bash sucks, even 4.4. An empty array does not exist! So if there are no tempfiles, then there is no array and set -u will show an error!
+        # The following line deletes the last array element (non-sparse arrays), which is the 'dummy' value.
+	    unset 'tmpFiles[ ${#tmpFiles[@]}-1 ]'
+	    for f in "${tmpFiles[@]}"; do
+	        if [[ -d "$f" ]]; then
+                rmdir "$f"
+            elif [[ -e "$f" ]]; then
+                rm "$f"
+            fi
+        done
+        tmpFiles=(dummy)
+    fi
+}
+
+# These versions only works with Bash 4.4+. Prior version do not really declare the array variables with empty values and set -u results in error message.
 waitForAll() {
     jobs
     wait ${pids[@]}
     pids=()
 }
-
-cleanUp() {
-    if [[ -v tmpFiles && ${#tmpFiles} -gt 0 ]]; then
-        # Bash sucks, even 4.4. An empty array does not exist! So if there are no tempfiles, then there is no array and set -u will show an error!
-        rm ${tmpFiles[@]}
-    fi
-}
-
 setUp() {
     declare -g -a -x tmpFiles=()
     declare -g -a -x pids=()
 }
+cleanUp() {
+    if [[ !debug && -v tmpFiles && ${#tmpFiles} -gt 0 ]]; then
+        for f in "${tmpFiles[@]}"; do
+            if [[ -d "$f" ]]; then
+                rmdir "$f"
+            elif [[ -e "$f" ]]; then
+                rm "$f"
+            fi
+        done
+    fi
+}
+
 
 tmpBaseFile() {
     local name="${1:?No filename given}"
@@ -60,7 +114,7 @@ md5File() {
    assertNonEmpty "$outputFile" "outputFile not defined" || return $?
 
    local md5Fifo=$(tmpBaseFile "$md5File")".fifo"
-   mkfifo "$md5Fifo"
+   mkFifo "$md5Fifo"
    registerTmpFile "$md5Fifo"
 
    cat $md5Fifo \
@@ -89,8 +143,8 @@ checkMd5Files() {
 }
 
 compressionOption() {
-    if [[ "${sortTmpCompressor:-}" != "" ]]; then
-        echo "--compress-program \"$sortTmpCompressor\""
+    if [[ "${sortCompressor:-}" != "" ]]; then
+        echo "--compress-program" $sortCompressor
     fi
 }
 
@@ -103,9 +157,9 @@ fastqDelinearize() {
 }
 
 sortLinearizedFastqStream() {
-    local tmpFile="${1:?No tempfile prefix given}"
+    local tmpDir="${1:?No temporary directory prefix given}"
     if [[ "$sortFastqsWith" == "coreutils" ]]; then
-        LC_ALL=C sort -t : -k 1d,1 -k 2n,2 -k 3d,3 -k 4n,7 -T "$tmpFile.sorting_tmp" $(compressionOption) -S "${sortMemory:-100m}"
+        LC_ALL=C sort -t : -k 1d,1 -k 2n,2 -k 3d,3 -k 4n,7 -T "$tmpDir" $(compressionOption) --parallel=${sortThreads:-1} -S "${sortMemory:-100m}"
     else
         throw 150 "Invalid value for sortFastqsWith: '$sortFastqsWith'"
     fi
