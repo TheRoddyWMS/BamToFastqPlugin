@@ -8,7 +8,7 @@
 # Environment variables:
 #
 # FILENAME_BAM: input BAM file
-# FILENAME_LANEFILES: A bash array containing the filenames of the output files expected to be available after this script ran.
+# FILENAME_UNSORTED_FASTQ: A bash array containing the filenames of the output files expected to be available after this script ran.
 #                     Note that this variable needs do be string, no true Bash-array, because exporting Bash arrays to sub-processes in dysfunctional.
 # compressIntermediateResults: Temporary files during sorting are compressed or not (gz), default: true
 # PICARD_OPTIONS: Additional options for picard.
@@ -16,7 +16,7 @@
 # JAVA_OPTIONS: Defaults to JAVA_OPTS.
 # outputPerReadGroup: Write separate FASTQs for each read group into $outputDir/$basename/ directory. Otherwise
 #                     create $outputDir/${basename}_r{1,2}.fastq{.gz,} files.
-# unpairedFastq: Additionally write a FASTQ with unpaired reads. Otherwise no such file is written.
+# writeUnpairedFastq: Additionally write a FASTQ with unpaired reads. Otherwise no such file is written.
 
 
 source "$TOOL_WORKFLOW_LIB"
@@ -57,14 +57,15 @@ processPairedEndWithReadGroups() {
         | "$PICARD_BINARY" $JAVA_OPTIONS SamToFastq $PICARD_OPTIONS INPUT=/dev/stdin
 
     ## Now make sure that the output files of Picard are renamed correctly.
-    for readGroup in $(BAMFILE="${FILENAME_BAM}" "${TOOL_BAM_LIST_READ_GROUPS}"); do
+    ## TODO Get the read groups from the java code.
+    for readGroup in "${readGroups[@]}"; do
         for read in 1 2; do
             srcName="$tmpReadGroupDir/${readGroup}_${read}.$FASTQ_SUFFIX"
 
             baseName=$(basename "$FILENAME_BAM" .bam)
             fgindex="${readGroup}_R${read}"
             ## Note that this corresponds to the filename pattern in the XML! We compose the output lane file, because we want to avoid
-            ## that read groups are confused or that we have to parse the FILENAME_LANEFILES here.
+            ## that read groups are confused or that we have to parse the FILENAME_UNSORTED_FASTQ here.
             tgtName="$outputAnalysisBaseDirectory/${fgindex}_unsorted/${baseName}_${fgindex}.$FASTQ_SUFFIX"
 
             mv "$srcName" "$tgtName" || throw 10 "Could not move file '$srcName' to '$tgtName'"
@@ -87,7 +88,7 @@ processPairedEndWithoutReadGroups() {
     fastq2BaseName="${baseName}_r2.${FASTQ_SUFFIX}"
     tmpFastq2=$(makeTempName "$outputDir" "$fastq2BaseName")
     PICARD_OPTIONS="$PICARD_OPTIONS COMPRESS_OUTPUTS_PER_RG=$compressIntermediateFastqs FASTQ=$tmpFastq1 SECOND_END_FASTQ=$tmpFastq2"
-    if [[ "${unpairedFastq:-false}" == true ]]; then
+    if [[ "${writeUnpairedFastq:-false}" == true ]]; then
         fastq3BaseName="${baseName}_r3.${FASTQ_SUFFIX}"
         tmpFastq3=$(makeTempName "$outputDir" "$fastq3BaseName")
         PICARD_OPTIONS="$PICARD_OPTIONS UNPAIRED_FASTQ=$tmpFastq3"
@@ -100,10 +101,10 @@ processPairedEndWithoutReadGroups() {
         | "$PICARD_BINARY" $JAVA_OPTIONS SamToFastq $PICARD_OPTIONS INPUT=/dev/stdin
 
     ## Now make sure that the output files of Picard are renamed correctly.
-    mv "$tmpFastq1" "${FILENAME_LANEFILES[0]}" || throw 10 "Could not move file '$tmpFastq1' to '${FILENAME_LANEFILES[0]}'"
-    mv "$tmpFastq2" "${FILENAME_LANEFILES[1]}" || throw 10 "Could not move file '$tmpFastq2' to '${FILENAME_LANEFILES[1]}'"
-    if [[ "${unpairedFastq:-false}" == true ]]; then
-        mv "$tmpFastq3" "${FILENAME_LANEFILES[2]}" || throw 10 "Could not move file '$tmpFastq3' to '${FILENAME_LANEFILES[2]}'"
+    mv "$tmpFastq1" "${FILENAME_UNSORTED_FASTQ[0]}" || throw 10 "Could not move file '$tmpFastq1' to '${FILENAME_UNSORTED_FASTQ[0]}'"
+    mv "$tmpFastq2" "${FILENAME_UNSORTED_FASTQ[1]}" || throw 10 "Could not move file '$tmpFastq2' to '${FILENAME_UNSORTED_FASTQ[1]}'"
+    if [[ "${writeUnpairedFastq:-false}" == true ]]; then
+        mv "$tmpFastq3" "${FILENAME_UNSORTED_FASTQ[2]}" || throw 10 "Could not move file '$tmpFastq3' to '${FILENAME_UNSORTED_FASTQ[2]}'"
     fi
 }
 
@@ -120,8 +121,10 @@ processSingleEndWithoutReadGroups() {
 main() {
     setUp_BashSucksVersion
 
-    # Re-Array the filenames variable (outputs). Bash does not transfer arrays properly to subprocesses. Therefore Roddy encodes arrays as strings.
-    declare -ax FILENAME_LANEFILES=${FILENAME_LANEFILES}
+    # Re-Array the filenames variable (outputs). Bash does not transfer arrays properly to subprocesses. Therefore Roddy encodes arrays as strings
+    # with enclosing parens. That is "(a b c)", with spaces as separators.
+    declare -ax FILENAME_UNSORTED_FASTQ=${FILENAME_UNSORTED_FASTQ}
+    declare -ax readGroups=${readGroups}
 
     FASTQ_SUFFIX=$(getFastqSuffix)
 

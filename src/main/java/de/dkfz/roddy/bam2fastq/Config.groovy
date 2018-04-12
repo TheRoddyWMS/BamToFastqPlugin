@@ -15,7 +15,7 @@ class Config {
     public static final String FLAG_SORT_FASTQS = "sortFastqs"
     public static final String FLAG_COMPRESS_INTERMEDIATE_FASTQS = "compressIntermediateFastqs"
     public static final String FLAG_PAIRED_END = "pairedEnd"
-    public static final String FLAG_UNPAIRED_FASTQ = "unpairedFastq"
+    public static final String FLAG_WRITE_UNPAIRED_FASTQ = "writeUnpairedFastq"
 
     private RecursiveOverridableMapContainerForConfigurationValues configValues
 
@@ -40,7 +40,7 @@ class Config {
 
     }
 
-    boolean getUnpairedFastq() {
-        this.configValues.getBoolean(FLAG_UNPAIRED_FASTQ, false)
+    boolean getWriteUnpairedFastq() {
+        this.configValues.getBoolean(FLAG_WRITE_UNPAIRED_FASTQ, false)
     }
 }

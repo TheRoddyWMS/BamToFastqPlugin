@@ -26,7 +26,7 @@
 
         <cvalue name="pairedEnd" value="true" type="boolean"
                 description="Whether the input BAMs are paired end BAMs."/>
-        <cvalue name="unpairedFastq" value="false" type="boolean"
+        <cvalue name="writeUnpairedFastq" value="false" type="boolean"
                 description="Write unpaired reads into a dedicated FASTQ. Only possible if pairedEnd=true. If 'false' these reads are discarded!"/>
 
         <cvalue name="compressIntermediateFastqs" value="true" type="boolean"
@@ -67,6 +67,11 @@
     <processingTools>
         <tool name='workflowEnvironment_tbiLsf' value="tbi-lsf-cluster.sh" basepath='bam2fastq/environments'/>
         <tool name='workflowEnvironment_conda' value="conda.sh" basepath='bam2fastq/environments'/>
+
+        <tool name="cleanup" value="cleanup.sh" basepath="bam2fastq">
+            <input type="filegroup" typeof="TextFile" scriptparameter="FILENAME_UNSORTED_FASTQ" passas="array"/>
+        </tool>
+
         <tool name="bamListReadGroups" value="bamListReadGroups.sh" basepath="bam2fastq"/>
         <tool name="bashLib" value="bashLib.sh" basepath="bam2fastq"/>
         <tool name="workflowLib" value="workflowLib.sh" basepath="bam2fastq"/>
@@ -79,7 +84,7 @@
                 <rset size="xl" memory="10G" cores="8" nodes="1" walltime="100:00:00"/>
             </resourcesets>
             <input type="file" typeof="BasicBamFile" scriptparameter='FILENAME_BAM'/>
-            <output type="filegroup" fileclass="TextFile" scriptparameter='FILENAME_LANEFILES' check="true" passas="array"/>
+            <output type="filegroup" fileclass="TextFile" scriptparameter='FILENAME_UNSORTED_FASTQ' check="true" passas="array"/>
         </tool>
 
         <tool name='sortFastqSingle' value='coreutilsSortFastqSingle.sh' basepath="bam2fastq">
@@ -143,8 +148,8 @@
              - onTool to match using the used tool's name
              - onScriptParameter to match against the 'scriptparameter' field in <output> tags.
              -->
-        <filename class="TextFile" onScriptParameter="FILENAME_LANEFILES"
-                  pattern='${fastqOutputDirectory}/${fgindex}_unsorted/${sourcefileAtomicPrefix,delimiter="."}_${fgindex}.fastq.gz'/>
+        <filename class="TextFile" onScriptParameter="FILENAME_UNSORTED_FASTQ"
+                  pattern='${fastqOutputDirectory}/${fgindex}_unsorted/sequence/${sourcefileAtomicPrefix,delimiter="."}_${fgindex}.fastq.gz'/>
         <filename class='TextFile' onScriptParameter='FILENAME_SORTED_FASTQ'
                   pattern='${fastqOutputDirectory}/${readGroup}/sequence/${sourcefileAtomicPrefix,delimiter="."}_${cvalue,name=readGroup,default="nogroup"}.sorted.fastq.gz'/>
 

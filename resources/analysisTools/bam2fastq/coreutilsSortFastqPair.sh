@@ -166,4 +166,3 @@ mv "$tmpSortedFastq1.md5" "$FILENAME_SORTED_FASTQ1.md5" || throw 35 "Could not m
 
 mv "$tmpSortedFastq2"      "$FILENAME_SORTED_FASTQ2"    || throw 36 "Could not move '$tmpSortedFastq2' to '$FILENAME_SORTED_FASTQ2'"
 mv "$tmpSortedFastq2.md5" "$FILENAME_SORTED_FASTQ2.md5" || throw 35 "Could not move '$tmpSortedFastq2.md5' to '$FILENAME_SORTED_FASTQ2.md5'"
-
