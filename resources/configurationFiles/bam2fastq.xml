@@ -11,8 +11,7 @@
                imports="commonCOWorkflowsSettings"
                canCreateTestdata='true'
                listOfUsedTools="bamListReadGroups,bashLib,workflowLib,bam2fastq,sortFastqSingle,sortFastqPaired"
-               usedToolFolders="bam2fastq,bam2fastqTools"
-               cleanupScript="">
+               usedToolFolders="bam2fastq,bam2fastqTools">
     <configurationvalues>
 
         <cvalue name='workflowEnvironmentScript' value="workflowEnvironment_conda" type='string'/>

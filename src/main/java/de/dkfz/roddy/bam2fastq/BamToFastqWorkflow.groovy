@@ -2,21 +2,28 @@ package de.dkfz.roddy.bam2fastq
 
 import de.dkfz.b080.co.common.BasicCOProjectsRuntimeService
 import de.dkfz.b080.co.files.BasicBamFile
+import de.dkfz.b080.co.files.TextFile
 import de.dkfz.roddy.config.ToolEntry
 import de.dkfz.roddy.config.ToolFileGroupParameter
+import de.dkfz.roddy.config.ToolFileParameter
+import de.dkfz.roddy.config.ToolFileParameterCheckCondition
 import de.dkfz.roddy.core.DataSet
 import de.dkfz.roddy.core.ExecutionContext
 import de.dkfz.roddy.core.ExecutionContextError
+import de.dkfz.roddy.core.Workflow
 
 /*
  * Copyright (c) 2018 DKFZ - ODCF
  *
  * Distributed under the MIT License (license terms are at https://www.github.com/eilslabs/Roddy/LICENSE.txt).
  */
-import de.dkfz.roddy.core.Workflow
+import de.dkfz.roddy.execution.io.ExecutionService
 import de.dkfz.roddy.knowledge.files.BaseFile
 import de.dkfz.roddy.knowledge.files.FileGroup
+import de.dkfz.roddy.knowledge.files.GenericFileGroup
+import de.dkfz.roddy.knowledge.methods.GenericMethod
 import de.dkfz.roddy.tools.LoggerWrapper
+import groovy.transform.CompileDynamic
 import groovy.transform.CompileStatic
 import sun.reflect.generics.reflectiveObjects.NotImplementedException
 
@@ -40,18 +47,16 @@ class BamToFastqWorkflow extends Workflow {
      */
     private synchronized final Map<String,List<String>> readGroupsPerBamfile = [:]
 
-    List<String> listReadGroups(ExecutionContext context, String bamfileName) {
+    List<String> listReadGroups(String bamfileName) {
         if (!readGroupsPerBamfile[bamfileName]) {
-             readGroupsPerBamfile[bamfileName] = callSynchronized(context, TOOL_BAM_LIST_READ_GROUPS, ["BAMFILE": bamfileName] as Map<String, Object>)
+             readGroupsPerBamfile[bamfileName] = //callDirect(TOOL_BAM_LIST_READ_GROUPS, ["BAMFILE": bamfileName] as Map<String, Object>)
+                     ExecutionService.getInstance().callDirect(context, TOOL_BAM_LIST_READ_GROUPS, ["BAMFILE": bamfileName] as Map<String, Object>)
         }
         return readGroupsPerBamfile[bamfileName]
     }
 
-    String getFastqName(Config cfg, String prefix, String readGroup, String index) {
-        String result = prefix + readGroup + "_r" + index + ".fastq"
-        if (cfg.compressIntermediateFastqs)
-            result += ".gz"
-        return result
+    List<String> readGroupIndices(List<String> readGroups) {
+        return readGroups.collect { String rg -> [rg + "_R1", rg + "_R2"] }.flatten() as List<String>
     }
 
     /**
@@ -59,13 +64,14 @@ class BamToFastqWorkflow extends Workflow {
      */
     FileGroup bam2fastq(Config config, BasicBamFile controlBam, List<String> readGroups) {
         if (config.pairedEnd) {
-            List<String> rgFileIndicesParameter = readGroups.collect { String rg -> [rg + "_R1", rg + "_R2"] }.flatten() as List<String>
+            List<String> rgFileIndicesParameter = readGroupIndices(readGroups)
             return callWithOutputFileGroup(TOOL_BAM2FASTQ, controlBam, rgFileIndicesParameter, [readGroups: readGroups])
         } else {
             throw new NotImplementedException()
         }
     }
 
+    @CompileDynamic
     void sortFastqs(Config cfg, String readGroup, BaseFile fastq1, BaseFile fastq2 = null, BaseFile fastq3 = null) {
         assert(fastq1 != fastq2)
         assert(fastq1 != fastq3)
@@ -81,21 +87,41 @@ class BamToFastqWorkflow extends Workflow {
         }
     }
 
-//    private FileGroup createCleanupJobInputFileGroup(ExecutionContext context) {
-//        def configuration = context.getConfiguration()
-//        ToolEntry.ToolParameter tparm = configuration.getTools().getValue("cleanup").getOutputParameters(configuration)[0];
-//        return createOutputFileGroup(tparm as ToolFileGroupParameter) as FileGroup
-//    }
-//
-//    @Override
-//    boolean cleanup(DataSet dataset) {
-//        return call(TOOL_CLEANUP, )
-//        return false
-//    }
+    private FileGroup getFilesForBam(BasicBamFile bamFile) {
+        def configuration = context.getConfiguration()
+        List<String> readGroups = readGroupsPerBamfile[bamFile.getAbsolutePath()]
 
-    Map<String, List<String>> readAllReadGroups(ExecutionContext context, List<BasicBamFile> bamFiles) {
+        ToolFileGroupParameter tfg = configuration.getTools().getValue("bam2fastq").getOutputParameters(configuration)[0] as ToolFileGroupParameter
+
+//        ToolFileParameter autoToolFileParameter = new ToolFileParameter(tfg.genericFileClass, [], tfg.scriptParameterName, new ToolFileParameterCheckCondition(true))
+
+        List<BaseFile> files = []
+        for (String index in readGroupIndices(readGroups)) {
+//            BaseFile bf = new GenericMethod("bam2fastq", null, bamFile, []).
+//                    convertToolFileParameterToBaseFile(autoToolFileParameter, index.toString())
+            files << BaseFile.constructGeneric(tfg.genericFileClass as Class<BaseFile>, bamFile, null,
+                    configuration.getTools().getValue("bam2fastq"), "bam2fastq", null,
+                    null, index, bamFile.fileStage, null)
+        }
+        return new GenericFileGroup(files)
+    }
+
+    @Override
+    boolean cleanup(DataSet dataset) {
+        Config cfg = new Config(context)
+        for (BasicBamFile basicBamFile : bamFiles) {
+
+            if (cfg.outputPerReadGroup) {
+                call(TOOL_CLEANUP, getFilesForBam(basicBamFile))
+            }
+
+        }
+        return true
+    }
+
+    Map<String, List<String>> readAllReadGroups(List<BasicBamFile> bamFiles) {
         return bamFiles.collectEntries { bamFile ->
-            new MapEntry(bamFile.absolutePath, listReadGroups(context, bamFile.absolutePath))
+            new MapEntry(bamFile.absolutePath, listReadGroups(bamFile.absolutePath))
         }
     }
 
@@ -105,7 +131,7 @@ class BamToFastqWorkflow extends Workflow {
         bamFiles = (context.runtimeService as BasicCOProjectsRuntimeService).getAllBamFiles(context)
         if (bamFiles.size() > 0) {
             if (new Config(context).outputPerReadGroup)
-                readAllReadGroups(context, bamFiles)
+                readAllReadGroups(bamFiles)
             result &= true
         } else {
             result &= false

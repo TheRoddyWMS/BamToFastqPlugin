@@ -42,6 +42,17 @@ getFastqSuffix() {
     echo "fastq${compressionSuffix}"
 }
 
+fastqForGroupIndex() {
+    local fgindex="${1:?No filegroup index}"
+    declare -a files=$(for fastq in ${FILENAME_UNSORTED_FASTQ[@]}; do
+        echo "$fastq"
+    done | grep --color=no "$fgindex")
+    if [[ ${#files[@]} != 1 ]]; then
+        throw 10 "Expected to find exactly 1 FASTQ for file-group index '$fgindex' -- found ${#files[@]}: ${files[@]}"
+    fi
+    echo "${files[0]}"
+}
+
 processPairedEndWithReadGroups() {
     ## Write all read-group FASTQs into a directory.
     tmpReadGroupDir="$outputAnalysisBaseDirectory"/$(basename "$FILENAME_BAM")".fastq"
@@ -64,10 +75,7 @@ processPairedEndWithReadGroups() {
 
             baseName=$(basename "$FILENAME_BAM" .bam)
             fgindex="${readGroup}_R${read}"
-            ## Note that this corresponds to the filename pattern in the XML! We compose the output lane file, because we want to avoid
-            ## that read groups are confused or that we have to parse the FILENAME_UNSORTED_FASTQ here.
-            tgtName="$outputAnalysisBaseDirectory/${fgindex}_unsorted/${baseName}_${fgindex}.$FASTQ_SUFFIX"
-
+            tgtName=$(fastqForGroupIndex "$fgindex")
             mv "$srcName" "$tgtName" || throw 10 "Could not move file '$srcName' to '$tgtName'"
         done
     done
