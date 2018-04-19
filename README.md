@@ -4,11 +4,11 @@ This [Roddy](https://github.com/TheRoddyWMS/Roddy) plugin contains a workflow fo
 
 Basically two simple steps are taken. First the BAM is converted to one or multiple FASTQs, each with the order of reads exactly as in the BAM (e.g. position-sorted). Then the FASTQs are sorted by FASTQ entry name.
 
-# Software Requirements
+## Software Requirements
 
 The workflow has very few requirements. Beyond a working [Roddy](https://github.com/TheRoddyWMS/Roddy) installation, it uses Picard for the actual BAM-to-FASTQ conversion and coreutils sort for the name-sorting of fastqs.
 
-## Conda
+### Conda
 
 The workflow contains a description of a [Conda](https://conda.io/docs/) environment. A number of Conda packages from [BioConda](https://bioconda.github.io/index.html) are required. You should set up the Conda environment at a centralized position available from all compute hosts. 
 
@@ -27,3 +27,85 @@ conda env create -n BamToFastqWorkflow -f $PATH_TO_PLUGIN_DIRECTORY/resources/an
 ```
 
 The name of the Conda environment is arbitrary but needs to be consistent with the `condaEnvironmentName` variable. The default for that variable is set in `resources/configurationFiles/bam2fastq.xml`.
+
+## Using the Workflow
+
+In terms of Roddy "modes", the workflow has two targets, namely `run`/`rerun` to run the actual workflow and `cleanup` to remove the unsorted FASTQ files.
+
+### Basic Config
+
+A basic configuration may look like this:
+
+```xml
+<configuration configurationType="project" name="bam2fastq">
+
+    <configurationvalues>
+	<cvalue name="pairedEnd" value="true" type="boolean"/>
+	<cvalue name="checkFastqMd5" value="false" type="boolean"/>
+    </configurationvalues>
+
+    <subconfigurations>
+	<configuration name="any">
+	    <availableAnalyses>
+		<analysis id='convert' configuration='bam2fastqAnalysis'/>
+	    </availableAnalyses>
+	</configuration>
+    </subconfigurations>
+
+</configuration>
+```
+
+Have a look at the `resources/configurationFiles/bam2fastq.xml` file for a complete list of parameters. The most important options are:
+
+* outputPerReadGroup: By default, read in the BAM an produce one set of FASTQs (single, pair, unsorted) for each read-group. Splitting by read-groups allows parallelization of sorting on different nodes and is more performant (due to O(n*log(n)) sorting cost).
+* readGroupTag: The tag in the BAM header that identifies the name of the read-group. Defaults to "id"
+* sortFastqs: Do you want to run the sortFastq step?
+* checktFastqMd5: While reading in intermediate FASTQs, check that the MD5 is the same as in the accompanied '.md5' file.
+
+Tuning parameters are
+
+* sortCompressor: Compress temporary files during the sorting. By default `pigz` is used for parallel compression/decompression.
+* compressorThreads: Used by `pigz` for temporary file compression. Currently defaulting to 4 cores.
+* sortMemory: Defaults to "10g"
+* sortThreads: Defaults to 4
+
+### `run`/`rerun`
+
+With the configuration XML from above the call for a single BAM file would be:
+
+```bash
+roddy.sh run bam2fastq.any@convert testpid --useconfig=$pathToYourAppIni --useiodir=$inPath,$outPath --cvalues="bamfile_list:tumor_testpid_merged.mdup.bam"
+```
+
+This will read in the directories in the `$inPath` and interpret them as datasets (e.g. patients). This call provides the list of BAM files and a matching list of sample types (`sample_list`) via a `--cvalue` parameter, that is as configuration value. Note that if multiple BAM files and corresponding sample types should be provided, these need to be separated with semi-colons. e.g.:
+
+```bash
+roddy.sh run bam2fastq.any@convert testpid --useconfig=$pathToYourAppIni --useiodir=$inPath,$outPath --cvalues="bamfile_list:tumor_testpid_merged.mdup.bam;normal_testpid_merged.mdup.bam"
+```
+
+The `extractSamplesFromOutputFiles:false` makes sure that the sample types are not extracted from the BAM files (in most workflows these are output files of an alignment workflow, which explains the name of the configuration value).
+
+Use `rerun` to restart a failed workflow keeping old results.
+
+
+### `cleanup`
+
+Remove the unsorted FASTQ files. Currently, these files are not actually removed but truncated to size 0. The call is the identical to the one for `run` or `rerun` but uses the `cleanup` mode of Roddy.
+
+```bash
+roddy.sh cleanup $configName@convert --useconfig=$pathToYourAppIni
+```
+
+
+
+```bash
+roddy.sh rerun $configName@convert \
+  --useconfig=$pathToYourAppIni \
+  --cvalues="sample_list:tumor;tumor;tumor;tumor;tumor;normal;normal;normal,possibleControlSampleNamePrefixes:normal,possibleTumorSampleNamePrefixes:tumor,bamfile_list:/icgc/dkfzlsdf/analysis/B080/kensche/tests/AlignmentAndQCWorkflows_1.2.73-OTPConfig-1.5-Roddy-2.4/OTPTest-AQCWF-WGS-1-2-Roddy-2-4.Picard.SoftwareBwa.WGS/tumor_testpid_merged.mdup.bam,extractSamplesFromOutputFiles:false"
+```
+
+
+## TODOs
+
+* Single-end BAM processing is not yet supported. Parameter "pairedEnd" is currently set to "false".
+* Unpaired FASTQs ("writeUnpairedFastq" is currently defaulting to "false"), for reads from the original BAM that are not paired, can be written, but there is no facility in the workflow yet to sort it by name.

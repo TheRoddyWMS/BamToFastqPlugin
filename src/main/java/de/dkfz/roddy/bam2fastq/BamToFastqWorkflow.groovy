@@ -1,37 +1,61 @@
 package de.dkfz.roddy.bam2fastq
 
-import de.dkfz.b080.co.common.BasicCOProjectsRuntimeService
-import de.dkfz.b080.co.files.BasicBamFile
+import de.dkfz.b080.co.files.COConstants
+import de.dkfz.roddy.Roddy
 import de.dkfz.roddy.config.ConfigurationError
+import de.dkfz.roddy.core.DataSet
 import de.dkfz.roddy.core.ExecutionContext
 import de.dkfz.roddy.core.ExecutionContextError
 import de.dkfz.roddy.core.Workflow
+import de.dkfz.roddy.execution.io.ExecutionService
+import de.dkfz.roddy.knowledge.files.BaseFile
+import de.dkfz.roddy.knowledge.files.FileGroup
 
 /*
  * Copyright (c) 2018 DKFZ - ODCF
  *
  * Distributed under the MIT License (license terms are at https://www.github.com/eilslabs/Roddy/LICENSE.txt).
  */
-import de.dkfz.roddy.execution.io.ExecutionService
-import de.dkfz.roddy.knowledge.files.BaseFile
-import de.dkfz.roddy.knowledge.files.FileGroup
 import de.dkfz.roddy.tools.LoggerWrapper
-import groovy.transform.CompileDynamic
 import groovy.transform.CompileStatic
-import sun.reflect.generics.reflectiveObjects.NotImplementedException
 
 @CompileStatic
 class BamToFastqWorkflow extends Workflow {
 
     public static final LoggerWrapper logger = LoggerWrapper.getLogger("BamToFastqWorkflow")
 
-    private List<BasicBamFile> bamFiles = []
+    private synchronized Map<DataSet,List<BaseFile>> _bamFilesPerDataset = [:]
+
+    private Config config = null
 
     public static final String TOOL_BAM_LIST_READ_GROUPS = "bamListReadGroups"
     public static final String TOOL_BAM2FASTQ = "bam2fastq"
     public static final String TOOL_SORT_FASTQ_SINGLE = "sortFastqSingle"
     public static final String TOOL_SORT_FASTQ_PAIR = "sortFastqPair"
     public static final String TOOL_CLEANUP = "cleanup"
+
+    List<BaseFile> getBamFiles() {
+        _bamFilesPerDataset.get(context.dataSet, [])
+    }
+
+    // Remove sample, sequence protocol etc. from filename patterns, etc. -- implement this stuff later
+    void determineBamFiles() {
+        List<BaseFile> bamFiles = []
+        if (Roddy.isMetadataCLOptionSet()) {
+            logger.severe("Metadata table input not implemented. Please use ${Config.CVALUE_BAMFILE_LIST} to specify the BAM files to convert.")
+        } else if (config.bamList.size() > 0) {
+            bamFiles = config.bamList.collect { filename ->
+                BaseFile.getSourceFile(context, filename, "BamFile")
+            }
+        } else {
+            // Collect files from directory structure.
+            logger.severe("Please use ${COConstants.CVALUE_BAMFILE_LIST} to specify the BAM files to convert.")
+        }
+        if (bamFiles.size() == 0)
+            logger.warning("No input BAM files were specified for dataset ${context.dataSet}.")
+
+        _bamFilesPerDataset[context.dataSet] = bamFiles
+    }
 
     /**
      * Return a list of read-groups identifiers from a bam
@@ -55,7 +79,7 @@ class BamToFastqWorkflow extends Workflow {
     /**
      * Extract FASTQs from a BAM. This may be with or without read-groups. The names of the output files depend on the parameters.
      */
-    FileGroup bam2fastq(Config config, BasicBamFile controlBam, List<String> readGroups) {
+    FileGroup bam2fastq(BaseFile controlBam, List<String> readGroups) {
         if (config.pairedEnd) {
             List<String> rgFileIndicesParameter = readGroupIndices(readGroups)
             return callWithOutputFileGroup(TOOL_BAM2FASTQ, controlBam, rgFileIndicesParameter, [readGroups: readGroups])
@@ -64,24 +88,22 @@ class BamToFastqWorkflow extends Workflow {
         }
     }
 
-    @CompileDynamic
-    void sortFastqs(Config cfg, String readGroup, BaseFile fastq1, BaseFile fastq2 = null, BaseFile fastq3 = null) {
+    void sortFastqs(String readGroup, BaseFile fastq1, BaseFile fastq2 = null, BaseFile fastq3 = null) {
         assert(fastq1 != fastq2)
         assert(fastq1 != fastq3)
         assert(fastq2 == null || fastq2 != fastq3)
-        if (cfg.pairedEnd) {
-            if (!cfg.writeUnpairedFastq) {
-                call(TOOL_SORT_FASTQ_PAIR, fastq1, fastq2, [readGroup: readGroup])
+        if (config.pairedEnd) {
+            if (!config.writeUnpairedFastq) {
+                call_fileObject(TOOL_SORT_FASTQ_PAIR, fastq1, fastq2, [readGroup: readGroup])
             } else {
-                throw new ConfigurationError("Single-end sortFastq not implemented", cfg.FLAG_PAIRED_END)
+                throw new ConfigurationError("Single-end sortFastq not implemented", config.FLAG_PAIRED_END)
             }
         } else {
-            call(TOOL_SORT_FASTQ_PAIR, fastq1, [readGroup: readGroup])
+            call_fileObject(TOOL_SORT_FASTQ_PAIR, fastq1, [readGroup: readGroup])
         }
     }
 
-
-    protected FileGroup cleanupFastqsForBam(Config config, BasicBamFile controlBam, List<String> readGroups) {
+    protected FileGroup cleanupFastqsForBam(Config config, BaseFile controlBam, List<String> readGroups) {
         if (config.pairedEnd) {
             List<String> rgFileIndicesParameter = readGroupIndices(readGroups)
             return callWithOutputFileGroup(TOOL_CLEANUP, controlBam, rgFileIndicesParameter, [readGroups: readGroups])
@@ -92,18 +114,17 @@ class BamToFastqWorkflow extends Workflow {
 
     @Override
     boolean cleanup() {
-        Config cfg = new Config(context)
-        for (BasicBamFile basicBamFile : bamFiles) {
+        for (BaseFile BaseFile : _bamFilesPerDataset.get(context.dataSet, [])) {
 
-            if (cfg.outputPerReadGroup) {
-                cleanupFastqsForBam(cfg, basicBamFile, readGroupsPerBamfile[basicBamFile.getAbsolutePath()])
+            if (config.outputPerReadGroup) {
+                cleanupFastqsForBam(config, BaseFile, readGroupsPerBamfile[BaseFile.getAbsolutePath()])
             }
 
         }
         return true
     }
 
-    Map<String, List<String>> readAllReadGroups(List<BasicBamFile> bamFiles) {
+    Map<String, List<String>> readAllReadGroups(List<BaseFile> bamFiles) {
         return bamFiles.collectEntries { bamFile ->
             new MapEntry(bamFile.absolutePath, listReadGroups(bamFile.absolutePath))
         }
@@ -111,8 +132,10 @@ class BamToFastqWorkflow extends Workflow {
 
     @Override
     boolean setupExecution(ExecutionContext context) {
+        config = new Config(context)
+
         boolean result = super.setupExecution(context)
-        bamFiles = (context.runtimeService as BasicCOProjectsRuntimeService).getAllBamFiles(context)
+        determineBamFiles()
         if (bamFiles.size() > 0) {
             if (new Config(context).outputPerReadGroup)
                 readAllReadGroups(bamFiles)
@@ -125,26 +148,25 @@ class BamToFastqWorkflow extends Workflow {
 
     @Override
     boolean execute(ExecutionContext context) {
-        Config cfg = new Config(context)
 
-        for (BasicBamFile basicBamFile : bamFiles) {
+        for (BaseFile BaseFile : bamFiles) {
 
-            if (cfg.outputPerReadGroup) {
-                List<String> readGroups = readGroupsPerBamfile[basicBamFile.absolutePath]
+            if (config.outputPerReadGroup) {
+                List<String> readGroups = readGroupsPerBamfile[BaseFile.absolutePath]
 
-                FileGroup unsortedFastqs = bam2fastq(cfg, basicBamFile, readGroups)
+                FileGroup unsortedFastqs = bam2fastq(BaseFile, readGroups)
 
-                if (cfg.sortFastqs) {
+                if (config.sortFastqs) {
                     for (int i = 0; i < readGroups.size(); i++) {
-                        this.sortFastqs(cfg, readGroups[i], unsortedFastqs[i * 2], unsortedFastqs[i * 2 + 1]) // All paired end, sorted by read group.
+                        this.sortFastqs(readGroups[i], unsortedFastqs[i * 2], unsortedFastqs[i * 2 + 1]) // All paired end, sorted by read group.
                     }
                 }
 
             } else {
-//                FileGroup out = bam2fastq(cfg, basicBamFile)
+//                FileGroup out = bam2fastq(cfg, BaseFile)
 //                if (cfg.sortFastqs())
 //                    this.sortFastqs(cfg)
-                throw new ConfigurationError("bam2fastq without output per read group not implemented", cfg.FLAG_SPLIT_BY_READ_GROUP)
+                throw new ConfigurationError("bam2fastq without output per read group not implemented", config.FLAG_SPLIT_BY_READ_GROUP)
             }
 
         }
@@ -152,13 +174,13 @@ class BamToFastqWorkflow extends Workflow {
         return true
     }
 
-    protected static boolean bamFilesAreAccessible(ExecutionContext context, List<BasicBamFile> bamFiles) {
+    protected static boolean bamFilesAreAccessible(ExecutionContext context, List<BaseFile> bamFiles) {
         return bamFiles.collect { file ->
             context.fileIsAccessible(file.path)
         }.inject { res, i -> res && i }
     }
 
-    protected static boolean bamFileIsUnique(ExecutionContext context, List<BasicBamFile> bamFiles) {
+    protected static boolean bamFileIsUnique(ExecutionContext context, List<BaseFile> bamFiles) {
         return bamFiles.groupBy { it.path }.collect { path, files ->
             if (files.size() > 1) {
                 context.addErrorEntry(ExecutionContextError.EXECUTION_NOINPUTDATA.
@@ -170,7 +192,7 @@ class BamToFastqWorkflow extends Workflow {
         }.inject { res, i -> res && i }
     }
 
-    protected Boolean checkReadGroups(ExecutionContext context, List<BasicBamFile> bamFiles) {
+    protected Boolean checkReadGroups(List<BaseFile> bamFiles) {
         Map<String, List<String>> readGroups = bamFiles.collectEntries { new MapEntry(it, readGroupsPerBamfile[it.absolutePath]) }
 
         boolean result = readGroups.collect { file, groups ->
@@ -193,7 +215,7 @@ class BamToFastqWorkflow extends Workflow {
         return result
     }
 
-    protected boolean checkBamFiles(ExecutionContext context) {
+    protected boolean checkBamFiles() {
         Boolean result = true
 
         if (!bamFiles) {
@@ -205,16 +227,29 @@ class BamToFastqWorkflow extends Workflow {
         result &= bamFileIsUnique(context, bamFiles)
 
         if (new Config(context).outputPerReadGroup) {
-            result &= checkReadGroups(context, bamFiles)
+            result &= checkReadGroups(bamFiles)
         }
 
         return result
     }
 
+    boolean checkSingleDatasetOnly() {
+        List<DataSet> datasets = context.getRuntimeService().
+                loadDatasetsWithFilter(context.analysis, Roddy.getCommandLineCall().datasetSpecifications, true)
+        if (datasets.size() != 1) {
+            context.addErrorEntry(ExecutionContextError.EXECUTION_SETUP_INVALID.
+                    expand("BamToFastqWorkflow only supports processing single datasets per run!"))
+            return false
+        }
+        return true
+    }
+
+
     @Override
-    boolean checkExecutability(ExecutionContext context) {
-        boolean result = super.checkExecutability(context)
-        result &= checkBamFiles(context)
+    boolean checkExecutability() {
+        boolean result = true
+        result &= checkSingleDatasetOnly()
+        result &= checkBamFiles()
         return result
     }
 }

@@ -7,8 +7,6 @@
 <configuration name='bam2fastqAnalysis' description='Convert BAM file into FASTQs.'
                configurationType='analysis' class='de.dkfz.roddy.core.Analysis'
                workflowClass='de.dkfz.roddy.bam2fastq.BamToFastqWorkflow'
-               runtimeServiceClass='de.dkfz.b080.co.common.BasicCOProjectsRuntimeService'
-               imports="commonCOWorkflowsSettings"
                canCreateTestdata='true'
                listOfUsedTools="bamListReadGroups,bashLib,workflowLib,bam2fastq,sortFastqSingle,sortFastqPaired"
                usedToolFolders="bam2fastq,bam2fastqTools">
@@ -51,8 +49,6 @@
         <cvalue name="sortThreads" value="4" type="string"
                 description="The number of parallel threads used for sorting."/>
 
-        <cvalue name='splitByReadGroup' value='true' type='boolean'
-                description="Should separate FASTQs be created per read group? 'true' is more performant."/>
         <cvalue name="outputPerReadGroup" value="true" type="boolean"
                 description="Create one or two FASTQs per read-group for single- or paired-end BAMs, respectively. Default: true."/>
         <cvalue name="readGroupTag" value="id" type="string"
@@ -68,7 +64,7 @@
         <tool name='workflowEnvironment_conda' value="conda.sh" basepath='bam2fastq/environments'/>
 
         <tool name="cleanup" value="cleanup.sh" basepath="bam2fastq">
-            <input type="file" typeof="BasicBamFile" scriptparameter='FILENAME_BAM'/>
+            <input type="file" typeof="BamFile" scriptparameter='FILENAME_BAM'/>
             <output type="filegroup" fileclass="TextFile" scriptparameter='FILENAME_UNSORTED_FASTQ' check="false" passas="array"/>
         </tool>
 
@@ -83,7 +79,7 @@
                 <rset size="l" memory="40" cores="2" nodes="1" walltime="10:00:00"/>
                 <rset size="xl" memory="10G" cores="8" nodes="1" walltime="100:00:00"/>
             </resourcesets>
-            <input type="file" typeof="BasicBamFile" scriptparameter='FILENAME_BAM'/>
+            <input type="file" typeof="BamFile" scriptparameter='FILENAME_BAM'/>
             <output type="filegroup" fileclass="TextFile" scriptparameter='FILENAME_UNSORTED_FASTQ' check="true" passas="array"/>
         </tool>
 
