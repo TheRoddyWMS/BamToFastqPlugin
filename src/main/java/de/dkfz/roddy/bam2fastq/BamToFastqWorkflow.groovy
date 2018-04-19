@@ -2,12 +2,7 @@ package de.dkfz.roddy.bam2fastq
 
 import de.dkfz.b080.co.common.BasicCOProjectsRuntimeService
 import de.dkfz.b080.co.files.BasicBamFile
-import de.dkfz.b080.co.files.TextFile
-import de.dkfz.roddy.config.ToolEntry
-import de.dkfz.roddy.config.ToolFileGroupParameter
-import de.dkfz.roddy.config.ToolFileParameter
-import de.dkfz.roddy.config.ToolFileParameterCheckCondition
-import de.dkfz.roddy.core.DataSet
+import de.dkfz.roddy.config.ConfigurationError
 import de.dkfz.roddy.core.ExecutionContext
 import de.dkfz.roddy.core.ExecutionContextError
 import de.dkfz.roddy.core.Workflow
@@ -20,8 +15,6 @@ import de.dkfz.roddy.core.Workflow
 import de.dkfz.roddy.execution.io.ExecutionService
 import de.dkfz.roddy.knowledge.files.BaseFile
 import de.dkfz.roddy.knowledge.files.FileGroup
-import de.dkfz.roddy.knowledge.files.GenericFileGroup
-import de.dkfz.roddy.knowledge.methods.GenericMethod
 import de.dkfz.roddy.tools.LoggerWrapper
 import groovy.transform.CompileDynamic
 import groovy.transform.CompileStatic
@@ -67,7 +60,7 @@ class BamToFastqWorkflow extends Workflow {
             List<String> rgFileIndicesParameter = readGroupIndices(readGroups)
             return callWithOutputFileGroup(TOOL_BAM2FASTQ, controlBam, rgFileIndicesParameter, [readGroups: readGroups])
         } else {
-            throw new NotImplementedException()
+            throw new ConfigurationError("Single-end bam2fastq not implemented", config.FLAG_PAIRED_END)
         }
     }
 
@@ -80,39 +73,30 @@ class BamToFastqWorkflow extends Workflow {
             if (!cfg.writeUnpairedFastq) {
                 call(TOOL_SORT_FASTQ_PAIR, fastq1, fastq2, [readGroup: readGroup])
             } else {
-                throw new NotImplementedException()
+                throw new ConfigurationError("Single-end sortFastq not implemented", cfg.FLAG_PAIRED_END)
             }
         } else {
             call(TOOL_SORT_FASTQ_PAIR, fastq1, [readGroup: readGroup])
         }
     }
 
-    private FileGroup getFilesForBam(BasicBamFile bamFile) {
-        def configuration = context.getConfiguration()
-        List<String> readGroups = readGroupsPerBamfile[bamFile.getAbsolutePath()]
 
-        ToolFileGroupParameter tfg = configuration.getTools().getValue("bam2fastq").getOutputParameters(configuration)[0] as ToolFileGroupParameter
-
-//        ToolFileParameter autoToolFileParameter = new ToolFileParameter(tfg.genericFileClass, [], tfg.scriptParameterName, new ToolFileParameterCheckCondition(true))
-
-        List<BaseFile> files = []
-        for (String index in readGroupIndices(readGroups)) {
-//            BaseFile bf = new GenericMethod("bam2fastq", null, bamFile, []).
-//                    convertToolFileParameterToBaseFile(autoToolFileParameter, index.toString())
-            files << BaseFile.constructGeneric(tfg.genericFileClass as Class<BaseFile>, bamFile, null,
-                    configuration.getTools().getValue("bam2fastq"), "bam2fastq", null,
-                    null, index, bamFile.fileStage, null)
+    protected FileGroup cleanupFastqsForBam(Config config, BasicBamFile controlBam, List<String> readGroups) {
+        if (config.pairedEnd) {
+            List<String> rgFileIndicesParameter = readGroupIndices(readGroups)
+            return callWithOutputFileGroup(TOOL_CLEANUP, controlBam, rgFileIndicesParameter, [readGroups: readGroups])
+        } else {
+            throw new ConfigurationError("Single-end cleanup not implemented", config.FLAG_PAIRED_END)
         }
-        return new GenericFileGroup(files)
     }
 
     @Override
-    boolean cleanup(DataSet dataset) {
+    boolean cleanup() {
         Config cfg = new Config(context)
         for (BasicBamFile basicBamFile : bamFiles) {
 
             if (cfg.outputPerReadGroup) {
-                call(TOOL_CLEANUP, getFilesForBam(basicBamFile))
+                cleanupFastqsForBam(cfg, basicBamFile, readGroupsPerBamfile[basicBamFile.getAbsolutePath()])
             }
 
         }
@@ -160,6 +144,7 @@ class BamToFastqWorkflow extends Workflow {
 //                FileGroup out = bam2fastq(cfg, basicBamFile)
 //                if (cfg.sortFastqs())
 //                    this.sortFastqs(cfg)
+                throw new ConfigurationError("bam2fastq without output per read group not implemented", cfg.FLAG_SPLIT_BY_READ_GROUP)
             }
 
         }

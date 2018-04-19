@@ -68,7 +68,8 @@
         <tool name='workflowEnvironment_conda' value="conda.sh" basepath='bam2fastq/environments'/>
 
         <tool name="cleanup" value="cleanup.sh" basepath="bam2fastq">
-            <input type="filegroup" typeof="TextFile" scriptparameter="FILENAME_UNSORTED_FASTQ" passas="array"/>
+            <input type="file" typeof="BasicBamFile" scriptparameter='FILENAME_BAM'/>
+            <output type="filegroup" fileclass="TextFile" scriptparameter='FILENAME_UNSORTED_FASTQ' check="false" passas="array"/>
         </tool>
 
         <tool name="bamListReadGroups" value="bamListReadGroups.sh" basepath="bam2fastq"/>
