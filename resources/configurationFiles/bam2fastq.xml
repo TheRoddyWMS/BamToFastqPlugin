@@ -20,9 +20,6 @@
         <cvalue name='PICARD_VERSION' value='2.13.2' type="string"/>
         <cvalue name='JAVA_VERSION' value='1.8.0_131' type="string"/>
 
-        <cvalue name="fastqOutputDirectory" value="${outputAnalysisBaseDirectory}"
-                description="To write files to e.g. outpath/bamFileBasename use just '${outputAnalysisBaseDirectory}'."/>
-
         <cvalue name="pairedEnd" value="true" type="boolean"
                 description="Whether the input BAMs are paired end BAMs."/>
         <cvalue name="writeUnpairedFastq" value="false" type="boolean"
@@ -60,6 +57,9 @@
                 description="Create one or two FASTQs per read-group for single- or paired-end BAMs, respectively. Default: true."/>
         <cvalue name="readGroupTag" value="id" type="string"
                 description="Name of the tag in the BAM header containing the name of the read-group. Default: id"/>
+
+        <cvalue name="fastqOutputDirectory" value="${outputAnalysisBaseDirectory}"
+                description="To write files to e.g. outpath/bamFileBasename use just '${outputAnalysisBaseDirectory}'."/>
 
     </configurationvalues>
 
