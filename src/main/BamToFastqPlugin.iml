@@ -6,10 +6,10 @@
       <sourceFolder url="file://$MODULE_DIR$/java" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../../resources/configurationFiles" type="java-resource" />
       <sourceFolder url="file://$MODULE_DIR$/../../resources/analysisTools" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/../../build" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="module" module-name="COWorkflowsBasePlugin" />
     <orderEntry type="module" module-name="PluginBase" />
     <orderEntry type="library" name="Gradle: ch.qos.logback:logback-core:1.1.6" level="project" />
     <orderEntry type="module" module-name="RoddyToolLib" />

@@ -1,6 +1,5 @@
 package de.dkfz.roddy.bam2fastq
 
-import de.dkfz.b080.co.files.COConstants
 import de.dkfz.roddy.Roddy
 import de.dkfz.roddy.config.ConfigurationError
 import de.dkfz.roddy.core.DataSet
@@ -10,13 +9,13 @@ import de.dkfz.roddy.core.Workflow
 import de.dkfz.roddy.execution.io.ExecutionService
 import de.dkfz.roddy.knowledge.files.BaseFile
 import de.dkfz.roddy.knowledge.files.FileGroup
+import de.dkfz.roddy.tools.LoggerWrapper
 
 /*
  * Copyright (c) 2018 DKFZ - ODCF
  *
  * Distributed under the MIT License (license terms are at https://www.github.com/eilslabs/Roddy/LICENSE.txt).
  */
-import de.dkfz.roddy.tools.LoggerWrapper
 import groovy.transform.CompileStatic
 
 @CompileStatic
@@ -49,7 +48,7 @@ class BamToFastqWorkflow extends Workflow {
             }
         } else {
             // Collect files from directory structure.
-            logger.severe("Please use ${COConstants.CVALUE_BAMFILE_LIST} to specify the BAM files to convert.")
+            logger.severe("Please use ${Config.CVALUE_BAMFILE_LIST} to specify the BAM files to convert.")
         }
         if (bamFiles.size() == 0)
             logger.warning("No input BAM files were specified for dataset ${context.dataSet}.")
