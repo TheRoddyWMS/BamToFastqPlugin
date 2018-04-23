@@ -48,7 +48,7 @@ class BamToFastqWorkflow extends Workflow {
             }
         } else {
             // Collect files from directory structure.
-            logger.severe("Please use ${Config.CVALUE_BAMFILE_LIST} to specify the BAM files to convert.")
+            logger.severe("Please use '${Config.CVALUE_BAMFILE_LIST}' to specify the BAM files to convert.")
         }
         if (bamFiles.size() == 0)
             logger.warning("No input BAM files were specified for dataset ${context.dataSet}.")
@@ -173,21 +173,13 @@ class BamToFastqWorkflow extends Workflow {
         return true
     }
 
-    protected static boolean bamFilesAreAccessible(ExecutionContext context, List<BaseFile> bamFiles) {
+    protected static boolean bamFilesAreAccessible(List<BaseFile> bamFiles) {
         return bamFiles.collect { file ->
-            context.fileIsAccessible(file.path)
-        }.inject { res, i -> res && i }
-    }
-
-    protected static boolean bamFileIsUnique(ExecutionContext context, List<BaseFile> bamFiles) {
-        return bamFiles.groupBy { it.path }.collect { path, files ->
-            if (files.size() > 1) {
-                context.addErrorEntry(ExecutionContextError.EXECUTION_NOINPUTDATA.
-                        expand("BamToFastqWorkflow requires unique set of BAM files per dataset. Violated by '${path}'."))
-                false
-            } else {
-                true
-            }
+            boolean result = context.fileIsAccessible(file.path)
+            if (!result)
+                context.addErrorEntry(ExecutionContextError.EXECUTION_PATH_INACCESSIBLE.
+                        expand("BAM file not accessible: '${file.absolutePath}'"))
+            result
         }.inject { res, i -> res && i }
     }
 
@@ -207,7 +199,7 @@ class BamToFastqWorkflow extends Workflow {
         readGroups.values().flatten().countBy { it }.forEach { String group, Integer count ->
             if (count > 1) {
                 // This is not a fatal error but may be intentional. Therefore just inform.
-                logger.always("Read group '${group}' occurs in multiple files.")
+                logger.warning("Read group '${group}' occurs in multiple files. Continuing ...")
             }
         }
 
@@ -222,8 +214,7 @@ class BamToFastqWorkflow extends Workflow {
             return false
         }
 
-        result &= bamFilesAreAccessible(context, bamFiles)
-        result &= bamFileIsUnique(context, bamFiles)
+        result &= bamFilesAreAccessible(bamFiles)
 
         if (new Config(context).outputPerReadGroup) {
             result &= checkReadGroups(bamFiles)
