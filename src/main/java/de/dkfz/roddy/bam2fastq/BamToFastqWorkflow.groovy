@@ -173,7 +173,7 @@ class BamToFastqWorkflow extends Workflow {
         return true
     }
 
-    protected static boolean bamFilesAreAccessible(List<BaseFile> bamFiles) {
+    protected boolean bamFilesAreAccessible(List<BaseFile> bamFiles) {
         return bamFiles.collect { file ->
             boolean result = context.fileIsAccessible(file.path)
             if (!result)
@@ -183,7 +183,7 @@ class BamToFastqWorkflow extends Workflow {
         }.inject { res, i -> res && i }
     }
 
-    protected Boolean checkReadGroups(List<BaseFile> bamFiles) {
+    protected boolean checkReadGroups(List<BaseFile> bamFiles) {
         Map<String, List<String>> readGroups = bamFiles.collectEntries { new MapEntry(it, readGroupsPerBamfile[it.absolutePath]) }
 
         boolean result = readGroups.collect { file, groups ->
