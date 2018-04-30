@@ -65,8 +65,8 @@ class BamToFastqWorkflow extends Workflow {
 
     List<String> listReadGroups(String bamfileName) {
         if (!readGroupsPerBamfile[bamfileName]) {
-             readGroupsPerBamfile[bamfileName] = //callDirect(TOOL_BAM_LIST_READ_GROUPS, ["BAMFILE": bamfileName] as Map<String, Object>)
-                     ExecutionService.getInstance().callDirect(context, TOOL_BAM_LIST_READ_GROUPS, ["BAMFILE": bamfileName] as Map<String, Object>)
+             readGroupsPerBamfile[bamfileName] = //runDirect(TOOL_BAM_LIST_READ_GROUPS, ["BAMFILE": bamfileName] as Map<String, Object>)
+                     ExecutionService.getInstance().runDirect(context, TOOL_BAM_LIST_READ_GROUPS, ["BAMFILE": bamfileName] as Map<String, Object>)
         }
         return readGroupsPerBamfile[bamfileName]
     }
