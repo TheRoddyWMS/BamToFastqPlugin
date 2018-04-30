@@ -23,9 +23,9 @@ class BamToFastqWorkflow extends Workflow {
 
     public static final LoggerWrapper logger = LoggerWrapper.getLogger("BamToFastqWorkflow")
 
-    private synchronized Map<DataSet,List<BaseFile>> _bamFilesPerDataset = [:]
+    private synchronized static Map<DataSet,List<BaseFile>> _bamFilesPerDataset = [:]
 
-    private Config config = null
+    private synchronized static Map<DataSet, Config> _config = [:]
 
     public static final String TOOL_BAM_LIST_READ_GROUPS = "bamListReadGroups"
     public static final String TOOL_BAM2FASTQ = "bam2fastq"
@@ -35,6 +35,10 @@ class BamToFastqWorkflow extends Workflow {
 
     List<BaseFile> getBamFiles() {
         _bamFilesPerDataset.get(context.dataSet, [])
+    }
+
+    Config getConfig() {
+        _config.get(context.dataSet, null)
     }
 
     // Remove sample, sequence protocol etc. from filename patterns, etc. -- implement this stuff later
@@ -61,17 +65,18 @@ class BamToFastqWorkflow extends Workflow {
      * @param context
      * @param bamfileName
      */
-    private synchronized final Map<String,List<String>> readGroupsPerBamfile = [:]
+    private synchronized final static Map<String,List<String>> readGroupsPerBamfile = [:]
 
     List<String> listReadGroups(String bamfileName) {
         if (!readGroupsPerBamfile[bamfileName]) {
-             readGroupsPerBamfile[bamfileName] = //runDirect(TOOL_BAM_LIST_READ_GROUPS, ["BAMFILE": bamfileName] as Map<String, Object>)
-                     ExecutionService.getInstance().runDirect(context, TOOL_BAM_LIST_READ_GROUPS, ["BAMFILE": bamfileName] as Map<String, Object>)
+            logger.always("Listing read groups in '$bamfileName'. This may take a while.")
+            readGroupsPerBamfile[bamfileName] =
+                    ExecutionService.getInstance().runDirect(context, TOOL_BAM_LIST_READ_GROUPS, ["BAMFILE": bamfileName] as Map<String, Object>)
         }
         return readGroupsPerBamfile[bamfileName]
     }
 
-    List<String> readGroupIndices(List<String> readGroups) {
+    static List<String> readGroupIndices(List<String> readGroups) {
         return readGroups.collect { String rg -> [rg + "_R1", rg + "_R2"] }.flatten() as List<String>
     }
 
@@ -131,7 +136,7 @@ class BamToFastqWorkflow extends Workflow {
 
     @Override
     boolean setupExecution(ExecutionContext context) {
-        config = new Config(context)
+        _config[context.dataSet] = new Config(context)
 
         boolean result = super.setupExecution(context)
         determineBamFiles()

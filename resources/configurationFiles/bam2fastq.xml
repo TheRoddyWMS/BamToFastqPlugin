@@ -68,6 +68,7 @@
             <output type="filegroup" fileclass="TextFile" scriptparameter='FILENAME_UNSORTED_FASTQ' check="false" passas="array"/>
         </tool>
 
+        <tool name="bamIsComplete" value="bamIsComplete.sh" basepath="bam2fastq"/>
         <tool name="bamListReadGroups" value="bamListReadGroups.sh" basepath="bam2fastq"/>
         <tool name="bashLib" value="bashLib.sh" basepath="bam2fastq"/>
         <tool name="workflowLib" value="workflowLib.sh" basepath="bam2fastq"/>
@@ -91,8 +92,7 @@
             </resourcesets>
             <input type="file" typeof="TextFile" scriptparameter='FILENAME_FASTQ'/>
             <input type="string" setby="callingCode" scriptparameter='readGroup'/>
-            <output type="file" typeof="TextFile" scriptparameter='FILENAME_SORTED_FASTQ' check="true"
-                    filename='${fastqOutputDirectory}/${readGroup}/sequence/${sourcefileAtomicPrefix,delimiter="."}_${readGroup}.sorted.fastq.gz'/>
+            <output type="file" typeof="TextFile" scriptparameter='FILENAME_SORTED_FASTQ' check="true"/>
         </tool>
 
         <tool name='sortFastqPair' value='coreutilsSortFastqPair.sh' basepath="bam2fastq">
@@ -106,9 +106,9 @@
             <input type="string" setby="callingCode" scriptparameter='readGroup'/>
             <output type="tuple">
                 <output type="file" typeof="TextFile" scriptparameter='FILENAME_SORTED_FASTQ1' check="true"
-                        filename='${fastqOutputDirectory}/${readGroup}/sequence/${sourcefileAtomicPrefix,delimiter="_R1"}_R1.sorted.fastq.gz'/>
+                        filename='${fastqOutputDirectory}/${sourcefileAtomicPrefix,delimiter="_R1"}_fastqs/${cvalue,name=readGroup,default="nogroup"}/sequence/${sourcefileAtomicPrefix,delimiter="_R1"}_R1.sorted.fastq.gz'/>
                 <output type="file" typeof="TextFile" scriptparameter='FILENAME_SORTED_FASTQ2' check="true"
-                        filename='${fastqOutputDirectory}/${readGroup}/sequence/${sourcefileAtomicPrefix,delimiter="_R1"}_R2.sorted.fastq.gz'/>
+                        filename='${fastqOutputDirectory}/${sourcefileAtomicPrefix,delimiter="_R1"}_fastqs/${cvalue,name=readGroup,default="nogroup"}/sequence/${sourcefileAtomicPrefix,delimiter="_R1"}_R2.sorted.fastq.gz'/>
                 <!-- Note: Only the first source file (FILENAME_FASTQ1) is considered as sourcefile. Therefore we delimit or _R1 here. ^^^^^-->
             </output>
         </tool>
@@ -122,7 +122,7 @@
                                                         of which the file is derived, set the delimiter option to define the delimiter default is "_"
                                                         the delimiter has to be placed inside "" as this is used to find the delimiter!
             - ${sourcepath}, use the path in which the source file is stored
-            - ${outputbasepath}, use the output path of the pid
+            - ${outputbasepath}, use the output path of the dataset/pid
             - ${[nameofdir]OutputDirectory}
 
             NOTICE: If you use options for a variable your are NOT allowed to use ","! It is used to recognize options.
@@ -145,9 +145,9 @@
              - onScriptParameter to match against the 'scriptparameter' field in <output> tags.
              -->
         <filename class="TextFile" onScriptParameter="FILENAME_UNSORTED_FASTQ"
-                  pattern='${fastqOutputDirectory}/${fgindex}_unsorted/sequence/${sourcefileAtomicPrefix,delimiter="."}_${fgindex}.fastq.gz'/>
+                  pattern='${fastqOutputDirectory}/${sourcefileAtomic}_unsorted_fastqs/${sourcefileAtomicPrefix,delimiter="."}_${fgindex}.fastq.gz'/>
         <filename class='TextFile' onScriptParameter='FILENAME_SORTED_FASTQ'
-                  pattern='${fastqOutputDirectory}/${readGroup}/sequence/${sourcefileAtomicPrefix,delimiter="."}_${cvalue,name=readGroup,default="nogroup"}.sorted.fastq.gz'/>
+                  pattern='${fastqOutputDirectory}/${sourcefileAtomicPrefix,delimiter="_unsorted_fastqs"}_fastqs/${cvalue,name=readGroup,default="nogroup"}/sequence/${sourcefileAtomicPrefix,delimiter="."}_${cvalue,name=readGroup,default="nogroup"}.sorted.fastq.gz'/>
 
     </filenames>
 </configuration>

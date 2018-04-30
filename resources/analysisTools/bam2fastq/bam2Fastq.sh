@@ -54,14 +54,15 @@ fastqForGroupIndex() {
 }
 
 processPairedEndWithReadGroups() {
+    local baseName=$(basename "$FILENAME_BAM" .bam)
+
     ## Write all read-group FASTQs into a directory.
-    tmpReadGroupDir="$outputAnalysisBaseDirectory"/$(basename "$FILENAME_BAM")".fastq"
+    local tmpReadGroupDir="$outputAnalysisBaseDirectory/${baseName}_bam2fastq_temp"
     registerTmpFile "$tmpReadGroupDir"
     mkdir -p "$tmpReadGroupDir" || throw 1 "Could not create output directory '$tmpReadGroupDir'"
 
-
-    PICARD_OPTIONS="$PICARD_OPTIONS COMPRESS_OUTPUTS_PER_RG=$compressIntermediateFastqs OUTPUT_PER_RG=true RG_TAG=${readGroupTag:-id} OUTPUT_DIR=${tmpReadGroupDir}"
-    JAVA_OPTIONS="${JAVA_OPTIONS:-$JAVA_OPTS}"
+    local PICARD_OPTIONS="$PICARD_OPTIONS COMPRESS_OUTPUTS_PER_RG=$compressIntermediateFastqs OUTPUT_PER_RG=true RG_TAG=${readGroupTag:-id} OUTPUT_DIR=${tmpReadGroupDir}"
+    local JAVA_OPTIONS="${JAVA_OPTIONS:-$JAVA_OPTS}"
     ## Only process the non-supplementary reads (-F 0x800). BWA flags all alternative alignments as supplementary while the full-length
     ## reads are exactly the ones not flagged supplementary.
     "$SAMTOOLS_BINARY" view -u -F 0x800 "$FILENAME_BAM" \
@@ -71,11 +72,9 @@ processPairedEndWithReadGroups() {
     ## TODO Get the read groups from the java code.
     for readGroup in "${readGroups[@]}"; do
         for read in 1 2; do
-            srcName="$tmpReadGroupDir/${readGroup}_${read}.$FASTQ_SUFFIX"
-
-            baseName=$(basename "$FILENAME_BAM" .bam)
-            fgindex="${readGroup}_R${read}"
-            tgtName=$(fastqForGroupIndex "$fgindex")
+            local srcName="$tmpReadGroupDir/${readGroup}_${read}.$FASTQ_SUFFIX"
+            local fgindex="${readGroup}_R${read}"
+            local tgtName=$(fastqForGroupIndex "$fgindex")
             mv "$srcName" "$tgtName" || throw 10 "Could not move file '$srcName' to '$tgtName'"
         done
     done
@@ -83,28 +82,28 @@ processPairedEndWithReadGroups() {
 
 
 processPairedEndWithoutReadGroups() {
-    ## Extract the output directory from the first lane file path entered.
-    outputDir=$(dirname "$outputAnalysisBaseDirectory")/$(basename "$FILENAME_BAM")".fastq"
-    registerTmpFile "$outputDir"
+    local baseName=$(basename "$FILENAME_BAM" .bam)
 
-    baseName=$(basename "$FILENAME_BAM" .bam)
+    ## Extract the output directory from the first lane file path entered.
+    local outputDir="$outputAnalysisBaseDirectory/${baseName}_temp"
+    registerTmpFile "$outputDir"
 
     ## Write just 2-3 FASTQs, depending on whether unpairedFastq is true.
     ## We need to add the suffix here such that Picard automatically does the compression.
-    fastq1BaseName="${baseName}_r1.${FASTQ_SUFFIX}"
-    tmpFastq1=$(makeTempName "$outputDir" "$fastq1BaseName")
-    fastq2BaseName="${baseName}_r2.${FASTQ_SUFFIX}"
-    tmpFastq2=$(makeTempName "$outputDir" "$fastq2BaseName")
-    PICARD_OPTIONS="$PICARD_OPTIONS COMPRESS_OUTPUTS_PER_RG=$compressIntermediateFastqs FASTQ=$tmpFastq1 SECOND_END_FASTQ=$tmpFastq2"
+    local fastq1BaseName="${baseName}_r1.${FASTQ_SUFFIX}"
+    local tmpFastq1=$(makeTempName "$outputDir" "$fastq1BaseName")
+    local fastq2BaseName="${baseName}_r2.${FASTQ_SUFFIX}"
+    local tmpFastq2=$(makeTempName "$outputDir" "$fastq2BaseName")
+    local PICARD_OPTIONS="$PICARD_OPTIONS COMPRESS_OUTPUTS_PER_RG=$compressIntermediateFastqs FASTQ=$tmpFastq1 SECOND_END_FASTQ=$tmpFastq2"
     if [[ "${writeUnpairedFastq:-false}" == true ]]; then
-        fastq3BaseName="${baseName}_r3.${FASTQ_SUFFIX}"
-        tmpFastq3=$(makeTempName "$outputDir" "$fastq3BaseName")
-        PICARD_OPTIONS="$PICARD_OPTIONS UNPAIRED_FASTQ=$tmpFastq3"
+        local fastq3BaseName="${baseName}_r3.${FASTQ_SUFFIX}"
+        local tmpFastq3=$(makeTempName "$outputDir" "$fastq3BaseName")
+        local PICARD_OPTIONS="$PICARD_OPTIONS UNPAIRED_FASTQ=$tmpFastq3"
     fi
 
     ## Only process the non-supplementary reads (-F 0x800). BWA flags all alternative alignments as supplementary while the full-length
     ## reads are exactly the ones not flagged supplementary.
-    JAVA_OPTIONS="${JAVA_OPTIONS:-$JAVA_OPTS}"
+    local JAVA_OPTIONS="${JAVA_OPTIONS:-$JAVA_OPTS}"
     "$SAMTOOLS_BINARY" view -u -F 0x800 "$FILENAME_BAM" \
         | "$PICARD_BINARY" $JAVA_OPTIONS SamToFastq $PICARD_OPTIONS INPUT=/dev/stdin
 
@@ -128,6 +127,8 @@ processSingleEndWithoutReadGroups() {
 
 main() {
     setUp_BashSucksVersion
+
+    "$TOOL_BAM_IS_COMPLETE" "$FILENAME_BAM"
 
     # Re-Array the filenames variable (outputs). Bash does not transfer arrays properly to subprocesses. Therefore Roddy encodes arrays as strings
     # with enclosing parens. That is "(a b c)", with spaces as separators.
