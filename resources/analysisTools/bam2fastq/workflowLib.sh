@@ -60,6 +60,9 @@ waitForAll_BashSucksVersion() {
 setUp_BashSucksVersion() {
     declare -g -a -x tmpFiles=(dummy)
     declare -g -a -x pids=(dummy)
+
+    # Remove all registered temporary files upon exit
+    trap cleanUp_BashSucksVersion EXIT
 }
 cleanUp_BashSucksVersion() {
     if [[ !debug && -v tmpFiles && ${#tmpFiles} -gt 1 ]]; then
@@ -103,6 +106,19 @@ cleanUp() {
 tmpBaseFile() {
     local name="${1:?No filename given}"
     echo "$RODDY_SCRATCH"/$(basename "$name")
+}
+
+createFifo() {
+    local name="${1:?No FIFO name given}"
+    mkFifo "$name"
+    registerTmpFile "$name"
+    echo "$name"
+}
+
+createTmpFile() {
+    local name="${1:?No tempfile name given}"
+    registerTmpFile "$name"
+    echo "$name"
 }
 
 md5File() {

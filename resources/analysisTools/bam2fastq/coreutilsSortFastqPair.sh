@@ -19,21 +19,10 @@ sortFastqPair() {
     local outfile1="${3:?No output fastq 1 given}"
     local outfile2="${4:?No output fastq 2 given}"
 
-    local linear1Fifo=$(tmpBaseFile "$infile1")".linearized.fifo"
-    mkFifo "$linear1Fifo"
-    registerTmpFile "$linear1Fifo"
-
-    local linear2Fifo=$(tmpBaseFile "$infile2")".linearized.fifo"
-    mkFifo "$linear2Fifo"
-    registerTmpFile "$linear2Fifo"
-
-    local sorted1Fifo=$(tmpBaseFile "$outfile1")".sorted.fifo"
-    mkFifo "$sorted1Fifo"
-    registerTmpFile "$sorted1Fifo"
-
-    local sorted2Fifo=$(tmpBaseFile "$outfile2")".sorted.fifo"
-    mkFifo "$sorted2Fifo"
-    registerTmpFile "$sorted2Fifo"
+    local linear1Fifo=$(createFifo $(tmpBaseFile "$infile1")".linearized.fifo")
+    local linear2Fifo=$(createFifo $(tmpBaseFile "$infile2")".linearized.fifo")
+    local sorted1Fifo=$(createFifo $(tmpBaseFile "$outfile1")".sorted.fifo")
+    local sorted2Fifo=$(createFifo $(tmpBaseFile "$outfile2")".sorted.fifo")
 
     local sourceCommand="cat"
     if [[ "${compressIntermediateFastqs:-true}" ]]; then
@@ -103,19 +92,11 @@ sortFastqPairWithMd5Check() {
         local tmpBase1=$(tmpBaseFile "$infile1")
         local tmpBase2=$(tmpBaseFile "$infile2")
 
-        local infile1Fifo="$tmpBase1.fifo"
-        mkFifo "$infile1Fifo"
-        registerTmpFile
+        local infile1Fifo=$(createFifo "$tmpBase1.fifo")
+        local infile2Fifo=$(createFifo "$tmpBase2.fifo")
 
-        local infile2Fifo="$tmpBase2.fifo"
-        mkFifo "$infile2Fifo"
-        registerTmpFile
-
-        local tmpMd5File1="$tmpBase1.md5.check"
-        registerTmpFile "$tmpMd5File1"
-
-        local tmpMd5File2="$tmpBase2.md5.check"
-        registerTmpFile "$tmpMd5File2"
+        local tmpMd5File1=$(createTmpFile "$tmpBase1.md5.check")
+        local tmpMd5File2=$(createTmpFile "$tmpBase2.md5.check")
 
         cat "$infile1" \
             | md5File "$tmpMd5File1.infile" \
@@ -146,9 +127,6 @@ if [[ "${pairedEnd:-false}" == "false" ]]; then
 fi
 
 setUp_BashSucksVersion
-
-# Remove all registered temporary files upon exit
-trap cleanUp_BashSucksVersion EXIT
 
 tmpSortedFastq1="$FILENAME_SORTED_FASTQ1.tmp"
 tmpSortedFastq2="$FILENAME_SORTED_FASTQ2.tmp"

@@ -45,8 +45,7 @@ sortFastqWithMd5Check() {
     if [[ ! -r "$referenceMd5File" ]]; then
         throw 50 "Cannot read MD5 file '$referenceMd5File'"
     else
-        local tmpInputMd5=$(tmpBaseFile "$infile")".md5.check"
-        registerTmpFile "$tmpInputMd5"
+        local tmpInputMd5=$(createTmpFile $(tmpBaseFile "$infile")".md5.check")
         cat "$infile" \
             | md5File "$tmpInputMd5" \
             | sortFastq /dev/stdin "$outfile" \
@@ -57,7 +56,7 @@ sortFastqWithMd5Check() {
     fi
 }
 
-setUp
+setUp_BashSucksVersion
 
 tmpSortedFastq="$FILENAME_SORTED_FASTQ.tmp"
 
@@ -67,9 +66,9 @@ else
     sortFastq "$FILENAME_FASTQ" "$tmpSortedFastq"
 fi
 
-waitForAll
+waitForAll_BashSucksVersion
 
 mv "$tmpSortedFastq" "$FILENAME_SORTED_FASTQ" || throw 35 "Could not move '$tmpSortedFastq' to '$FILENAME_SORTED_FASTQ'"
 mv "$tmpSortedFastq.md5" "$FILENAME_SORTED_FASTQ.md5" || throw 35 "Could not move '$tmpSortedFastq.md5' to '$FILENAME_SORTED_FASTQ.md5'"
 
-cleanUp
+cleanUp_BashSucksVersion
