@@ -57,6 +57,7 @@ A basic configuration may look like this:
 
 Have a look at the `resources/configurationFiles/bam2fastq.xml` file for a complete list of parameters. The most important options are:
 
+* converter: Actual tool used for the BAM to FASTQ conversion. Currently, supported are `biobambam` (bamtofastq) and `picard` (SamToFastq).
 * outputPerReadGroup: By default, read in the BAM an produce one set of FASTQs (single, pair, unsorted) for each read-group. Splitting by read-groups allows parallelization of sorting on different nodes and is more performant (due to O(n*log(n)) sorting cost).
 * readGroupTag: The tag in the BAM header that identifies the name of the read-group. Defaults to "id"
 * sortFastqs: Do you want to run the sortFastq step?
@@ -68,6 +69,8 @@ Tuning parameters are
 * compressorThreads: Used by `pigz` for temporary file compression. Currently defaulting to 4 cores.
 * sortMemory: Defaults to "10g"
 * sortThreads: Defaults to 4
+
+Dependent on the actual BAM to FASTQ converter other tuning options may be available (e.g. for the JVM).
 
 ### `run`/`rerun`
 
@@ -104,6 +107,13 @@ roddy.sh rerun $configName@convert \
   --cvalues="sample_list:tumor;tumor;tumor;tumor;tumor;normal;normal;normal,possibleControlSampleNamePrefixes:normal,possibleTumorSampleNamePrefixes:tumor,bamfile_list:/icgc/dkfzlsdf/analysis/B080/kensche/tests/AlignmentAndQCWorkflows_1.2.73-OTPConfig-1.5-Roddy-2.4/OTPTest-AQCWF-WGS-1-2-Roddy-2-4.Picard.SoftwareBwa.WGS/tumor_testpid_merged.mdup.bam,extractSamplesFromOutputFiles:false"
 ```
 
+## Unsorted Notes
+
+### Handling of Read-Group Special Cases
+
+* For read groups mentioned in the header, but without reads, the workflow produces (possibly empty) FASTQs.
+* For reads without a group Biobambam's  `bamtofastq` produces a 'default' group. The Roddy workflow always produces (possibly empty) FASTQs for this group. The reason is that such reads can only be recognized by traversing the whole file, but output directories and jobs are fixed during submission time, where we do not want to traverse more than the BAM header.
+* When splitting by read groups, Picard's (2.14.1) `SamToFastq` dies if there are reads that are not assigned to a read group.
 
 ## TODOs
 
