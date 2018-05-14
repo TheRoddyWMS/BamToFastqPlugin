@@ -11,3 +11,4 @@ export JAVA_BINARY=java
 export MBUFFER_BINARY=mbuffer
 export CHECKSUM_BINARY=md5sum
 export PERL_BINARY=perl
+export BIOBAMBAM_BAM2FASTQ_BINARY=bamtofastq

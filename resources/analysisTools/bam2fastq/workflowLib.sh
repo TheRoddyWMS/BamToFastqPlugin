@@ -159,7 +159,7 @@ fastqDelinearize() {
 sortLinearizedFastqStream() {
     local tmpDir="${1:?No temporary directory prefix given}"
     if [[ "$sortFastqsWith" == "coreutils" ]]; then
-        LC_ALL=C sort -t : -k 1d,1 -k 2n,2 -k 3d,3 -k 4n,7 -T "$tmpDir" $(compressionOption) --parallel=${sortThreads:-1} -S "${sortMemory:-100m}"
+        LC_ALL=C sort -t : -k 1d,1 -k 2n,2 -k 3d,3 -k 4n,4 -k 5n,5 -k 6n,6 -k 7n,7 -T "$tmpDir" $(compressionOption) --parallel=${sortThreads:-1} -S "${sortMemory:-100m}"
     else
         throw 150 "Invalid value for sortFastqsWith: '$sortFastqsWith'"
     fi

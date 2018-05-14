@@ -18,7 +18,7 @@ source "$TOOL_WORKFLOW_LIB"
 printInfo
 set -o pipefail
 set -uvex
-export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+# export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 sortFastq() {
     local infile="${1:-/dev/stdin}"
