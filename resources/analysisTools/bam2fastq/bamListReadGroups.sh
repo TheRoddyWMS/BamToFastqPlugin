@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2018 DKFZ.
 #
-# Distributed under the MIT License (license terms are at https://github.com/TheRoddyWMS/BamToFastqPluginLICENSE.txt).
+# Distributed under the MIT License (license terms are at https://github.com/TheRoddyWMS/BamToFastqPlugin/blob/master/LICENSE.txt).
 #
 set -ue
 

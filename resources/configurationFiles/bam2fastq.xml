@@ -1,7 +1,7 @@
 <!--
   ~ Copyright (c) 2018 DKFZ.
   ~
-  ~ Distributed under the MIT License (license terms are at https://github.com/TheRoddyWMS/BamToFastqPlugin/LICENSE.txt).
+  ~ Distributed under the MIT License (license terms are at https://github.com/TheRoddyWMS/BamToFastqPlugin/blob/master/LICENSE.txt).
   -->
 
 <configuration name='bam2fastqAnalysis' description='Convert BAM file into FASTQs.'

@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
-# Philip R. Kensche
-# Loosely based on a Groovy script written by Manuel Prinz.
+#
+# Copyright (c) 2018 DKFZ.
+#
+# Distributed under the MIT License (license terms are at https://github.com/TheRoddyWMS/BamToFastqPlugin/blob/master/LICENSE.txt).
+#
+# Philip R. Kensche. Loosely based on a Groovy script written by Manuel Prinz.
 
 # Report FAIL or OK to standard output and details to standard error.
 

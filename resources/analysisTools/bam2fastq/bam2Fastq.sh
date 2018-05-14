@@ -2,23 +2,39 @@
 #
 # Copyright (c) 2018 DKFZ.
 #
-# Distributed under the MIT License (license terms are at https://github.com/TheRoddyWMS/BamToFastqPluginLICENSE.txt).
+# Distributed under the MIT License (license terms are at https://github.com/TheRoddyWMS/BamToFastqPlugin/blob/master/LICENSE.txt).
 #
 #
 # Environment variables:
 #
-# FILENAME_BAM: input BAM file
-# FILENAME_UNSORTED_FASTQ: A bash array containing the filenames of the output files expected to be available after this script ran.
-#                     Note that this variable needs do be string, no true Bash-array, because exporting Bash arrays to sub-processes in dysfunctional.
-# compressIntermediateResults: Temporary files during sorting are compressed or not (gz), default: true
-# PICARD_OPTIONS: Additional options for picard.
-# JAVA_BINARY: Java binary name/path.
-# JAVA_OPTIONS: Defaults to JAVA_OPTS.
-# excludedReadFlags: space delimited list flags for reads to exclude during processing of: secondary, supplementary
-# outputPerReadGroup: Write separate FASTQs for each read group into $outputDir/$basename/ directory. Otherwise
-#                     create $outputDir/${basename}_r{1,2}.fastq{.gz,} files.
-# writeUnpairedFastq: Additionally write a FASTQ with unpaired reads. Otherwise no such file is written.
-
+# FILENAME_BAM:
+#   input BAM file
+#
+# FILENAME_UNSORTED_FASTQ:
+#   A bash array containing the filenames of the output files expected to be available after this script ran.
+#   Note that this variable needs do be string, no true Bash-array, because exporting Bash arrays to sub-processes in dysfunctional.
+#
+# compressIntermediateResults:
+#   Temporary files during sorting are compressed or not (gz), default: true
+#
+# PICARD_OPTIONS:
+#   Additional options for picard.
+#
+# JAVA_BINARY:
+#   Java binary name/path.
+#
+# JAVA_OPTIONS:
+#   Defaults to JAVA_OPTS.
+#
+# excludedReadFlags:
+#   space delimited list flags for reads to exclude during processing of: secondary, supplementary
+#
+# outputPerReadGroup:
+#   Write separate FASTQs for each read group into $outputDir/$basename/ directory. Otherwise
+#   create $outputDir/${basename}_r{1,2}.fastq{.gz,} files.
+#
+# writeUnpairedFastq:
+#   Additionally write a FASTQ with unpaired reads. Otherwise no such file is written.
 
 source "$TOOL_WORKFLOW_LIB"
 printInfo
@@ -115,7 +131,7 @@ processPairedEndWithReadGroupsBiobambam() {
 
     ## Now make sure that the output files are renamed correctly.
     for readGroup in "${readGroups[@]}"; do
-        ## TODO Also rescue U1 U2 S files.
+        ## TODO Also rescue O1, O2 (singleton "orphan" read 1/2), S (single-end reads) files.
         for read in R1 R2; do
             local srcName="$tmpReadGroupDir/${readGroup}_${read}.$FASTQ_SUFFIX"
             local fgindex="${readGroup}_${read}"
@@ -126,8 +142,8 @@ processPairedEndWithReadGroupsBiobambam() {
                 mv "$srcName" "$tgtName" || throw 10 "Could not move file '$srcName' to '$tgtName'"
             else
                 ## Furthermore, for read groups in the SAM header without reads, no FASTQ is produced. Such read group produce problems
-                ## downstream. So here we create an empty dummy FASTQ. Note that this may include the 'default' read group that Roddy adds
-                ## See "bamListReadGroups.sh".
+                ## downstream. So here we create an empty dummy FASTQ. Note that this may include the 'default' read group that is added
+                ## by "bamListReadGroups.sh".
                 cat /dev/null | gzip -c - > "$tgtName"
             fi
         done
@@ -231,6 +247,7 @@ processSingleEndWithoutReadGroupsPicard() {
 
 
 main() {
+    ## See workflowLib.sh
     setUp_BashSucksVersion
 
     "$TOOL_BAM_IS_COMPLETE" "$FILENAME_BAM"
@@ -263,6 +280,7 @@ main() {
         fi
     fi
 
+    ## See workflowLib.sh
     cleanUp_BashSucksVersion
 }
 

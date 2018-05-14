@@ -1,9 +1,9 @@
-package de.dkfz.roddy.bam2fastq;
 /*
  * Copyright (c) 2018 DKFZ - ODCF
  *
- * Distributed under the MIT License (license terms are at https://www.github.com/eilslabs/Roddy/LICENSE.txt).
+ * Distributed under the MIT License (license terms are at https://github.com/TheRoddyWMS/BamToFastqPlugin/blob/master/LICENSE.txt).
  */
+package de.dkfz.roddy.bam2fastq;
 
 import de.dkfz.roddy.plugins.BasePlugin;
 

@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2018 DKFZ.
 #
-# Distributed under the MIT License (license terms are at https://github.com/TheRoddyWMS/BamToFastqPluginLICENSE.txt).
+# Distributed under the MIT License (license terms are at https://github.com/TheRoddyWMS/BamToFastqPlugin/LICENSE.txt).
 #
 
 source "$TOOL_BASH_LIB"
