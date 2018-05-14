@@ -111,11 +111,11 @@ roddy.sh rerun $configName@convert \
 
 ### Handling of Read-Group Special Cases
 
-* For read groups mentioned in the header, but without reads, the workflow produces (possibly empty) FASTQs.
-* For reads without a group Biobambam's  `bamtofastq` produces a 'default' group. The Roddy workflow always produces (possibly empty) FASTQs for this group. The reason is that such reads can only be recognized by traversing the whole file, but output directories and jobs are fixed during submission time, where we do not want to traverse more than the BAM header.
+* For read groups mentioned in the header but without reads, the workflow produces (possibly empty) FASTQs.
+* For reads without a group, Biobambam's  `bamtofastq` produces a 'default' group. The Roddy workflow always produces (possibly empty) FASTQs for this group. The reason is that such reads can only be recognized by traversing the whole file, but output directories and jobs are fixed during submission time, where we do not want to traverse more than the BAM header.
 * When splitting by read groups, Picard's (2.14.1) `SamToFastq` dies if there are reads that are not assigned to a read group.
 
 ## TODOs
 
-* Single-end BAM processing is not yet supported. Parameter "pairedEnd" is currently set to "false".
+* Single-end BAM processing is not yet supported. Parameter "pairedEnd" is currently set to "true".
 * Unpaired FASTQs ("writeUnpairedFastq" is currently defaulting to "false"), for reads from the original BAM that are not paired, can be written, but there is no facility in the workflow yet to sort it by name.
