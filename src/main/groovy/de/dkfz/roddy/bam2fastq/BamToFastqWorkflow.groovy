@@ -18,6 +18,8 @@ import de.dkfz.roddy.tools.LoggerWrapper
  */
 import groovy.transform.CompileStatic
 
+import java.nio.file.Files
+
 @CompileStatic
 class BamToFastqWorkflow extends Workflow {
 
@@ -69,7 +71,7 @@ class BamToFastqWorkflow extends Workflow {
 
     List<String> listReadGroups(String bamfileName) {
         if (!readGroupsPerBamfile[bamfileName]) {
-            logger.always("Listing read groups in '$bamfileName'. This may take a while.")
+            logger.always("Listing read groups in '$bamfileName'.")
             readGroupsPerBamfile[bamfileName] =
                     ExecutionService.getInstance().runDirect(context, TOOL_BAM_LIST_READ_GROUPS, ["BAMFILE": bamfileName] as Map<String, Object>)
         }
@@ -92,18 +94,28 @@ class BamToFastqWorkflow extends Workflow {
         }
     }
 
-    void sortFastqs(String readGroup, BaseFile fastq1, BaseFile fastq2 = null, BaseFile fastq3 = null) {
+    /** Submit a sorting job for each read group. The read-group name is provided via the `readGroup` parameter. Also the BAM-file name is provided
+     *  such that it can be used in the filename pattern using the `${cvalue}` syntax.
+     *
+     * @param bamFileName
+     * @param readGroup
+     * @param fastq1
+     * @param fastq2
+     * @param fastq3
+     */
+    void sortFastqs(String bamFileName, String readGroup, BaseFile fastq1, BaseFile fastq2 = null, BaseFile fastq3 = null) {
         assert(fastq1 != fastq2)
         assert(fastq1 != fastq3)
         assert(fastq2 == null || fastq2 != fastq3)
+        HashMap<String, String> parameters = [readGroup: readGroup, bamFileName: bamFileName]
         if (config.pairedEnd) {
             if (!config.writeUnpairedFastq) {
-                call_fileObject(TOOL_SORT_FASTQ_PAIR, fastq1, fastq2, [readGroup: readGroup])
+                call_fileObject(TOOL_SORT_FASTQ_PAIR, fastq1, fastq2, parameters)
             } else {
                 throw new ConfigurationError("Single-end sortFastq not implemented", config.FLAG_PAIRED_END)
             }
         } else {
-            call_fileObject(TOOL_SORT_FASTQ_PAIR, fastq1, [readGroup: readGroup])
+            call_fileObject(TOOL_SORT_FASTQ_PAIR, fastq1, parameters)
         }
     }
 
@@ -153,16 +165,16 @@ class BamToFastqWorkflow extends Workflow {
     @Override
     boolean execute(ExecutionContext context) {
 
-        for (BaseFile BaseFile : bamFiles) {
+        for (BaseFile bamFile : bamFiles) {
 
             if (config.outputPerReadGroup) {
-                List<String> readGroups = readGroupsPerBamfile[BaseFile.absolutePath]
+                List<String> readGroups = readGroupsPerBamfile[bamFile.absolutePath]
 
-                FileGroup unsortedFastqs = bam2fastq(BaseFile, readGroups)
+                FileGroup unsortedFastqs = bam2fastq(bamFile, readGroups)
 
                 if (config.sortFastqs) {
                     for (int i = 0; i < readGroups.size(); i++) {
-                        this.sortFastqs(readGroups[i], unsortedFastqs[i * 2], unsortedFastqs[i * 2 + 1]) // All paired end, sorted by read group.
+                        this.sortFastqs(bamFile.getPath().name, readGroups[i], unsortedFastqs[i * 2], unsortedFastqs[i * 2 + 1]) // All paired end, sorted by read group.
                     }
                 }
 
@@ -238,7 +250,6 @@ class BamToFastqWorkflow extends Workflow {
         }
         return true
     }
-
 
     @Override
     boolean checkExecutability() {
