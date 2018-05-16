@@ -19,15 +19,15 @@ sortFastqPair() {
     local outfile1="${3:?No output fastq 1 given}"
     local outfile2="${4:?No output fastq 2 given}"
 
-    local linear1Fifo=$(createFifo $(tmpBaseFile "$infile1")".linearized.fifo")
-    local linear2Fifo=$(createFifo $(tmpBaseFile "$infile2")".linearized.fifo")
-    local sorted1Fifo=$(createFifo $(tmpBaseFile "$outfile1")".sorted.fifo")
-    local sorted2Fifo=$(createFifo $(tmpBaseFile "$outfile2")".sorted.fifo")
-
     local sourceCommand="cat"
     if [[ "${compressIntermediateFastqs:-true}" ]]; then
         sourceCommand="$compressor -d"
     fi
+
+    local linear1Fifo=$(createFifo $(tmpBaseFile "$infile1")".linearized.fifo")
+    local linear2Fifo=$(createFifo $(tmpBaseFile "$infile2")".linearized.fifo")
+    local sorted1Fifo=$(createFifo $(tmpBaseFile "$outfile1")".sorted.fifo")
+    local sorted2Fifo=$(createFifo $(tmpBaseFile "$outfile2")".sorted.fifo")
 
     $sourceCommand "$infile1" \
         | fastqLinearize \

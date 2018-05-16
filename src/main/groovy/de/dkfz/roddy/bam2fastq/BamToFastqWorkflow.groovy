@@ -34,6 +34,8 @@ class BamToFastqWorkflow extends Workflow {
 
     private synchronized static Map<DataSet, Config> _config = [:]
 
+    private synchronized final static Map<String,List<String>> readGroupsPerBamfile = [:]
+
     public static final String TOOL_BAM_LIST_READ_GROUPS = "bamListReadGroups"
     public static final String TOOL_BAM2FASTQ = "bam2fastq"
     public static final String TOOL_SORT_FASTQ_SINGLE = "sortFastqSingle"
@@ -48,7 +50,7 @@ class BamToFastqWorkflow extends Workflow {
         _config.get(context.dataSet, null)
     }
 
-    // Remove sample, sequence protocol etc. from filename patterns, etc. -- implement this stuff later
+    // TODO Remove sample, sequence protocol etc. from filename patterns, etc. -- implement this stuff later
     void determineBamFiles() {
         List<BaseFile> bamFiles = []
         if (Roddy.isMetadataCLOptionSet()) {
@@ -72,8 +74,6 @@ class BamToFastqWorkflow extends Workflow {
      * @param context
      * @param bamfileName
      */
-    private synchronized final static Map<String,List<String>> readGroupsPerBamfile = [:]
-
     List<String> listReadGroups(String bamfileName) {
         if (!readGroupsPerBamfile[bamfileName]) {
             logger.always("Listing read groups in '$bamfileName'.")
@@ -109,9 +109,9 @@ class BamToFastqWorkflow extends Workflow {
      * @param fastq3
      */
     void sortFastqs(String bamFileName, String readGroup, BaseFile fastq1, BaseFile fastq2 = null, BaseFile fastq3 = null) {
-        assert(fastq1 != fastq2)
-        assert(fastq1 != fastq3)
-        assert(fastq2 == null || fastq2 != fastq3)
+        assert(fastq1.absolutePath != fastq2.absolutePath)
+        assert(fastq1.absolutePath != fastq3.absolutePath)
+        assert(fastq2 == null || fastq2.absolutePath != fastq3.absolutePath)
         HashMap<String, String> parameters = [readGroup: readGroup, bamFileName: bamFileName]
         if (config.pairedEnd) {
             if (!config.writeUnpairedFastq) {
@@ -147,7 +147,7 @@ class BamToFastqWorkflow extends Workflow {
 
     Map<String, List<String>> readAllReadGroups(List<BaseFile> bamFiles) {
         return bamFiles.collectEntries { bamFile ->
-            new MapEntry(bamFile.absolutePath, listReadGroups(bamFile.absolutePath))
+            [(bamFile.absolutePath): listReadGroups(bamFile.absolutePath)]
         }
     }
 
@@ -202,11 +202,11 @@ class BamToFastqWorkflow extends Workflow {
                 context.addErrorEntry(ExecutionContextError.EXECUTION_PATH_INACCESSIBLE.
                         expand("BAM file not accessible: '${file.absolutePath}'"))
             result
-        }.inject { res, i -> res && i }
+        }.every()
     }
 
     protected boolean checkReadGroups(List<BaseFile> bamFiles) {
-        Map<String, List<String>> readGroups = bamFiles.collectEntries { new MapEntry(it, readGroupsPerBamfile[it.absolutePath]) }
+        Map<String, List<String>> readGroups = bamFiles.collectEntries { [(it): readGroupsPerBamfile[it.absolutePath]] }
 
         boolean result = readGroups.collect { file, groups ->
             if (groups.size() == 0) {
@@ -216,7 +216,7 @@ class BamToFastqWorkflow extends Workflow {
             } else {
                 true
             }
-        }.inject { res, i -> res && i }
+        }.every()
 
         readGroups.values().flatten().countBy { it }.forEach { String group, Integer count ->
             if (count > 1) {
