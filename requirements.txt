@@ -1,4 +1,1 @@
-plumbum==1.6.3
-
-picard 2.13.2 => Put to resources/analysisTools/bam2fastqTools ! and make executable
-(Won't currently work otherwise)
+picard 2.13.2: Put the Jar into resources/analysisTools/bam2fastqTools and make executable.

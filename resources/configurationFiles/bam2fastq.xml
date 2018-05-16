@@ -1,100 +1,122 @@
 <!--
   ~ Copyright (c) 2018 DKFZ.
   ~
-  ~ Distributed under the MIT License (license terms are at https://github.com/TheRoddyWMS/BamToFastqPlugin/LICENSE.txt).
+  ~ Distributed under the MIT License (license terms are at https://github.com/TheRoddyWMS/BamToFastqPlugin/blob/master/LICENSE.txt).
   -->
 
 <configuration name='bam2fastqAnalysis' description='Convert BAM file into FASTQs.'
                configurationType='analysis' class='de.dkfz.roddy.core.Analysis'
-               workflowClass='de.dkfz.roddy.bam2fastq.Bam2FastqWorkflow'
-               runtimeServiceClass='de.dkfz.b080.co.common.BasicCOProjectsRuntimeService'
-               imports="commonCOWorkflowsSettings"
+               workflowClass='de.dkfz.roddy.bam2fastq.BamToFastqWorkflow'
                canCreateTestdata='true'
                listOfUsedTools="bamListReadGroups,bashLib,workflowLib,bam2fastq,sortFastqSingle,sortFastqPaired"
                usedToolFolders="bam2fastq,bam2fastqTools"
-               cleanupScript="">
+               runtimeServiceClass="de.dkfz.roddy.core.RuntimeService">
     <configurationvalues>
 
-        <!--<cvalue name='RSCRIPT_VERSION' value='3.0.0' type="string"/>-->
-        <!--<cvalue name='PERL_VERSION' value='5.20.2' type="string"/>-->
+        <cvalue name='workflowEnvironmentScript' value="workflowEnvironment_conda" type='string'/>
+        <cvalue name="condaEnvironmentName" value="BamToFastqPlugin" type="string"/>
         <cvalue name='SAMTOOLS_VERSION' value='1.2' type="string"/>
-        <cvalue name='PICARD_VERSION' value='1.61' type="string"/>
+        <cvalue name='PICARD_VERSION' value='2.13.2' type="string"/>
         <cvalue name='JAVA_VERSION' value='1.8.0_131' type="string"/>
-        <!--<cvalue name='PYTHON_VERSION' value='2.7.9' type="string"/>-->
-        <!--<cvalue name='BEDTOOLS_VERSION' value='2.16.2' type="string"/>-->
+        <cvalue name='BIOBAMBAM_VERSION' value="2.0.87" type="string"/>
 
-        <cvalue name="JAVA_OPTIONS" value="-Xms64m -Xmx32G"
-                description="Picard uses memory for collating paired reads."/>
-        <!--<cvalue name="SAMTOOLS_BINARY" value="samtools-1.2" type="string"-->
-        <!--description="Samtools is used for extracting the read-group names from the BAM and for restricting to non-supplementary reads."/>-->
-        <cvalue name="PICARD_OPTIONS" value="VALIDATION_STRINGENCY=SILENT CREATE_MD5_FILE=${checkMd5} USE_JDK_DEFLATER=true USE_JDK_INFLATER=true"/>
-        <!--<cvalue name="PICARD_JAR" value="/home/kensche/picard.jar" type="string"-->
-        <!--description="The Picard tools used for sorting. Versions below XXXX do not support compression of the FASTQs."/>-->
-
-        <cvalue name='workflowEnvironmentScript' value="workflowEnvironment_tbiLsf" type='string'/>
-        <cvalue name="fastqOutputDirectory" value="${outputAnalysisBaseDirectory}/${pid}/${sample}/${SEQUENCER_PROTOCOL}/"
-                description="To write files to e.g. outpath/bamFileBasename use ${outputAnalysisBaseDirectory}"/>
-
-        <cvalue name='splitByReadGroup' value='true' type='boolean'/>
-        <cvalue name='sortFastqsWith' value='coreutils' type='boolean'
-                description='Currently only coreutils.'/>
-        <cvalue name='sortMemory' value='10g' type="string"
-                description="Memory used for storing data while sorting. Is passed to the sorting tool and should follow its required syntax. WARNING: Also adapt the job requirements!"/>
-        <cvalue name='sortTmpCompressor' value='gzip' type="string"
-                description="Compression tool. Needs to compress the stdin and write to stdout without options"/>
-        <cvalue name="checkMd5" value="true" type="boolean"/>
-
-        <cvalue name="compressIntermediateFastqs" value="true" type="boolean"
-                description="Intermediate files may be compressed. Default: true"/>
+        <cvalue name="converter" value="picard" type="string"
+                description="BAM to FASTQ converter. Default: picard. Allowed: picard, biobambam"/>
+        <cvalue name="pairedEnd" value="true" type="boolean"
+                description="Whether the input BAMs are paired end BAMs."/>
+        <cvalue name="excludedReadFlags" value="secondary supplementary" type="basharray"
+                description="Reads with these flags are excluded. Space delimited list (interpreted as bash array) of the following values: secondary, supplementary."/>
+        <cvalue name="writeUnpairedFastq" value="false" type="boolean"
+                description="Write unpaired reads into a dedicated FASTQ. Only possible if pairedEnd=true. If 'false' these reads are discarded!"/>
         <cvalue name="outputPerReadGroup" value="true" type="boolean"
                 description="Create one or two FASTQs per read-group for single- or paired-end BAMs, respectively. Default: true."/>
         <cvalue name="readGroupTag" value="id" type="string"
                 description="Name of the tag in the BAM header containing the name of the read-group. Default: id"/>
-        <cvalue name="pairedEnd" value="true" type="boolean"
-                description="Whether the input BAMs are paired end BAMs."/>
-        <cvalue name="unpairedFastq" value="false" type="boolean"
-                description="Write unpaired reads FASTQ. Only possible if pairedEnd=true."/>
+        <cvalue name="fastqOutputDirectory" value="${outputAnalysisBaseDirectory}"
+                description="To write files to e.g. outpath/bamFileBasename use just '${outputAnalysisBaseDirectory}'."/>
+        <cvalue name="compressIntermediateFastqs" value="true" type="boolean"
+                description="Intermediate files produced by Picard (probably position-sorted) may be compressed. Default: true"/>
 
+        <cvalue name="PICARD_OPTIONS" value="VALIDATION_STRINGENCY=SILENT CREATE_MD5_FILE=${checkFastqMd5} USE_JDK_DEFLATER=true USE_JDK_INFLATER=true"
+                description="On Intel machines better set the USE_JDK_INFLATER and USE_JDK_DEFLATER options to 'false'. Only relevant if compressIntermediateFastqs=true."/>
+        <cvalue name="JAVA_OPTIONS" value="-Xms64m -Xmx30g -XX:+UseG1GC -XX:NativeMemoryTracking=summary"
+                description="Picard uses memory for collating paired reads. Should match the requested memory in the bam2fastq tool."/>
+
+        <cvalue name="compressor" value="${TOOL_PIGZ}" type="string"
+                description="Compression binary or script used for (de)compression of sorted output FASTQs. gzip, ${TOOL_PIGZ}."/>
+
+        <!-- Sorting configuration: coreutils sort -->
+        <cvalue name="sortFastqs" value="true" type="boolean"
+                description="Whether to sort the output FASTQs."/>
+        <cvalue name='sortFastqsWith' value='coreutils' type='boolean'
+                description='Currently only coreutils, which uses coreutils "sort".'/>
+        <cvalue name="checkFastqMd5" value="true" type="boolean"
+                description="While reading in intermediate FASTQs, check that the MD5 is the same as in the accompanied '.md5' file."/>
+        <cvalue name='sortCompressor' value='${TOOL_PIGZ}' type="string"
+                description="Compression tool for temporary files created by coreutils sort. Needs to compress the stdin and write to stdout without options and decompress using the -d option. By using pigz (${TOOL_PIGZ}) you can increase the number of cores used for compression."/>
+        <cvalue name="compressorThreads" value="4" type="string"
+                description="Number of threads for compression and decompression by the sortCompressor and compressor. Used by ${TOOL_PIGZ}."/>
+        <cvalue name='sortMemory' value='10g' type="string"
+                description="Memory used for storing data while sorting. Is passed to the sorting tool and should follow its required syntax. WARNING: Also adapt the job requirements!"/>
+        <cvalue name="sortThreads" value="4" type="string"
+                description="The number of parallel threads used for sorting."/>
 
     </configurationvalues>
 
     <processingTools>
         <tool name='workflowEnvironment_tbiLsf' value="tbi-lsf-cluster.sh" basepath='bam2fastq/environments'/>
+        <tool name='workflowEnvironment_conda' value="conda.sh" basepath='bam2fastq/environments'/>
+
+        <tool name="cleanup" value="cleanup.sh" basepath="bam2fastq">
+            <input type="file" typeof="BamFile" scriptparameter='FILENAME_BAM'/>
+            <output type="filegroup" fileclass="TextFile" scriptparameter='FILENAME_UNSORTED_FASTQ' check="false" passas="array"/>
+        </tool>
+
+        <tool name="bamIsComplete" value="bamIsComplete.sh" basepath="bam2fastq"/>
         <tool name="bamListReadGroups" value="bamListReadGroups.sh" basepath="bam2fastq"/>
-        <!--<input type="file" typeof="BasicBamFile" scriptparameter="BAMFILE" />-->
-        <!--</tool>-->
         <tool name="bashLib" value="bashLib.sh" basepath="bam2fastq"/>
         <tool name="workflowLib" value="workflowLib.sh" basepath="bam2fastq"/>
-        <tool name="picard" value="picard_2.13.2.jar" basepath="bam2fastqTools"/>
-        <tool name="bam2fastq" value="bam2Fastq.sh" basepath="bam2fastq">TextFile
+        <tool name="pigz" value="pigz.sh" basepath="bam2fastq"/>
+
+        <tool name="bam2fastq" value="bam2Fastq.sh" basepath="bam2fastq">
             <resourcesets>
-                <rset size="t" memory="40" cores="2" nodes="1" walltime="00:10:00"/>
-                <rset size="l" memory="40" cores="2" nodes="1" walltime="10:00:00"/>
+                <rset size="t" memory="40M" cores="2" nodes="1" walltime="00:10:00"/>
+                <rset size="m" memory="10G" cores="2" nodes="1" walltime="10:00:00"/>
+                <rset size="l" memory="20G" cores="2" nodes="1" walltime="50:00:00"/>
+                <rset size="xl" memory="20G" cores="8" nodes="1" walltime="100:00:00"/>
             </resourcesets>
-            <input type="file" typeof="BasicBamFile" scriptparameter='FILENAME_BAM'/>
-            <output type="filegroup" fileclass="TextFile" scriptparameter='FILENAME_LANEFILES' check="true" passas="array"/>
+            <input type="file" typeof="BamFile" scriptparameter='FILENAME_BAM'/>
+            <output type="filegroup" fileclass="TextFile" scriptparameter='FILENAME_UNSORTED_FASTQ' check="true" passas="array"/>
         </tool>
-        <tool name='sortFastqSingle' value='sortFastqSingle.sh' basepath="bam2fastq">
+
+        <tool name='sortFastqSingle' value='coreutilsSortFastqSingle.sh' basepath="bam2fastq">
             <resourcesets>
-                <rset size="t" memory="0.1" cores="1" nodes="1" walltime="00:10:00"/>
-                <rset size="l" memory="5G" cores="8" nodes="1" walltime="10:00:00"/>
+                <rset size="t" memory="0.1" cores="8" nodes="1" walltime="00:10:00"/>
+                <rset size="m" memory="10G" cores="8" nodes="1" walltime="10:00:00"/>
+                <rset size="l" memory="10G" cores="8" nodes="1" walltime="50:00:00"/>
+                <rset size="xl" memory="10G" cores="8" nodes="1" walltime="100:00:00"/>
             </resourcesets>
             <input type="file" typeof="TextFile" scriptparameter='FILENAME_FASTQ'/>
+            <input type="string" setby="callingCode" scriptparameter='readGroup'/>
             <output type="file" typeof="TextFile" scriptparameter='FILENAME_SORTED_FASTQ' check="true"/>
         </tool>
-        <tool name='sortFastqPair' value='sortFastqPair.sh' basepath="bam2fastq">
+
+        <tool name='sortFastqPair' value='coreutilsSortFastqPair.sh' basepath="bam2fastq">
             <resourcesets>
-                <rset size="t" memory="0.1" cores="1" nodes="1" walltime="00:10:00"/>
-                <rset size="l" memory="10G" cores="8" nodes="1" walltime="10:00:00"/>
+                <rset size="t"  memory="0.1" cores="8" nodes="1" walltime="00:10:00"/>
+                <rset size="m"  memory="10G" cores="8" nodes="1" walltime="10:00:00"/>
+                <rset size="l"  memory="10G" cores="8" nodes="1" walltime="50:00:00"/>
+                <rset size="xl" memory="10G" cores="8" nodes="1" walltime="100:00:00"/>
             </resourcesets>
             <input type="file" typeof="TextFile" scriptparameter='FILENAME_FASTQ1'/>
             <input type="file" typeof="TextFile" scriptparameter='FILENAME_FASTQ2'/>
-            <input type="string" setby="callingCode" scriptparameter='READGROUP'/>
+            <input type="string" setby="callingCode" scriptparameter='readGroup'/>
             <output type="tuple">
                 <output type="file" typeof="TextFile" scriptparameter='FILENAME_SORTED_FASTQ1' check="true"
-                        filename='${fastqOutputDirectory}/${sourcefileAtomicPrefix,delimiter="."}_${READGROUP}_R1.sorted.fastq.gz'/>
+                        filename='${fastqOutputDirectory}/${bamFileName}_fastqs/${readGroup}/sequence/${sourcefileAtomicPrefix,delimiter="_R1"}_R1.sorted.fastq.gz'/>
                 <output type="file" typeof="TextFile" scriptparameter='FILENAME_SORTED_FASTQ2' check="true"
-                        filename='${fastqOutputDirectory}/${sourcefileAtomicPrefix,delimiter="."}_${READGROUP}_R2.sorted.fastq.gz'/>
+                        filename='${fastqOutputDirectory}/${bamFileName}_fastqs/${readGroup}/sequence/${sourcefileAtomicPrefix,delimiter="_R1"}_R2.sorted.fastq.gz'/>
+                <!-- Note: Only the first source file (FILENAME_FASTQ1) is considered as sourcefile. Therefore we delimit on _R1 here. ^^^^^-->
             </output>
         </tool>
     </processingTools>
@@ -107,7 +129,7 @@
                                                         of which the file is derived, set the delimiter option to define the delimiter default is "_"
                                                         the delimiter has to be placed inside "" as this is used to find the delimiter!
             - ${sourcepath}, use the path in which the source file is stored
-            - ${outputbasepath}, use the output path of the pid
+            - ${outputbasepath}, use the output path of the dataset/pid
             - ${[nameofdir]OutputDirectory}
 
             NOTICE: If you use options for a variable your are NOT allowed to use ","! It is used to recognize options.
@@ -118,8 +140,10 @@
             - ${lane}
             - ${laneindex}
             - You can put in configuration values to do this use:
+              ${configValueName} or
               ${cvalue,name=[name of the value],default=".."} where default is optional.
             - ${fileStageID} use the id String of the file's stage to build up the name.
+            - ${fgindex}
             -->
         <!-- Pattern Matching: A filename can be matched to a file by
              - derivedFrom='shortClassName/longClassName' to match against the origin file
@@ -128,16 +152,10 @@
              - onTool to match using the used tool's name
              - onScriptParameter to match against the 'scriptparameter' field in <output> tags.
              -->
-        <filename class="TextFile" onScriptParameter="FILENAME_CHECKPOINT" pattern='${fastqOutputDirectory}/.${sourcefileAtomicPrefix,delimiter="."}_${readGroup}.checkpoint'/>
-        <filename class="TextFile" onScriptParameter="FILENAME_LANEFILES" pattern='${fastqOutputDirectory}/.${sourcefileAtomicPrefix,delimiter="."}_${fgindex}.fastq.gz'/>
-
-        <filename class='TextFile' onScriptParameter='FILENAME_FASTQ' pattern='${fastqOutputDirectory}/${sourcefileAtomicPrefix,delimiter="."}_${cvalue,name=readGroup,default="nogroup"}.fastq.gz'/>
-        <filename class='TextFile' onScriptParameter='FILENAME_FASTQ1' pattern='${fastqOutputDirectory}/${sourcefileAtomicPrefix,delimiter="."}_${cvalue,name=readGroup,default="nogroup"}_r1.fastq.gz'/>
-        <filename class='TextFile' onScriptParameter='FILENAME_FASTQ2' pattern='${fastqOutputDirectory}/${sourcefileAtomicPrefix,delimiter="."}_${cvalue,name=readGroup,default="nogroup"}_r2.fastq.gz'/>
-
-        <filename class='TextFile' onScriptParameter='FILENAME_SORTED_FASTQ' pattern='${fastqOutputDirectory}/${sourcefileAtomicPrefix,delimiter="."}_${cvalue,name=readGroup,default="nogroup"}.sorted.fastq.gz'/>
-        <!--<filename class='TextFile' onScriptParameter='FILENAME_SORTED_FASTQ1' pattern/>-->
-        <!--<filename class='TextFile' onScriptParameter='FILENAME_SORTED_FASTQ2' pattern='${fastqOutputDirectory}/${sourcefileAtomicPrefix,delimiter="."}_${cvalue,name=readGroup,default="nogroup"}_r2.sorted.fastq.gz'/>-->
+        <filename class="TextFile" onScriptParameter="FILENAME_UNSORTED_FASTQ"
+                  pattern='${fastqOutputDirectory}/${sourcefileAtomic}_unsorted_fastqs/${sourcefileAtomicPrefix,delimiter="."}_${fgindex}.fastq.gz'/>
+        <filename class='TextFile' onScriptParameter='FILENAME_SORTED_FASTQ'
+                  pattern='${fastqOutputDirectory}/${bamFileName}_fastqs/${readGroup}/sequence/${sourcefileAtomicPrefix,delimiter="."}_${readGroup}.sorted.fastq.gz'/>
 
     </filenames>
 </configuration>

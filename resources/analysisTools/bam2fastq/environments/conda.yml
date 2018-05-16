@@ -1,0 +1,32 @@
+#
+# Copyright (c) 2018 DKFZ.
+#
+# Distributed under the MIT License (license terms are at https://github.com/TheRoddyWMS/BamToFastqPlugin/blob/master/LICENSE.txt
+#
+name: BamToFastqPlugin
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+  - r
+dependencies:
+  - mbuffer=20160228=0
+  - picard=2.14.1=py36_0
+  - samtools=1.2=2
+  - ca-certificates=2018.4.16=0
+  - certifi=2018.4.16=py36_0
+  - ncurses=5.9=10
+  - openjdk=8.0.144=zulu8.23.0.3_1
+  - openssl=1.0.2o=0
+  - pbzip2=1.1.13=0
+  - perl=5.22.2.1=0
+  - pigz=2.3.4=0
+  - pip=9.0.1=py36_1
+  - python=3.6.4=0
+  - readline=7.0=0
+  - setuptools=38.5.1=py36_0
+  - sqlite=3.20.1=2
+  - tk=8.6.7=0
+  - wheel=0.30.0=py36_2
+  - xz=5.2.3=0
+  - zlib=1.2.11=0
