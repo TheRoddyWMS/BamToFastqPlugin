@@ -109,9 +109,10 @@ class BamToFastqWorkflow extends Workflow {
      * @param fastq3
      */
     void sortFastqs(String bamFileName, String readGroup, BaseFile fastq1, BaseFile fastq2 = null, BaseFile fastq3 = null) {
-        assert(fastq1.absolutePath != fastq2.absolutePath)
-        assert(fastq1.absolutePath != fastq3.absolutePath)
-        assert(fastq2 == null || fastq2.absolutePath != fastq3.absolutePath)
+        assert(fastq1 != null)
+        assert(fastq1.absolutePath != fastq2?.absolutePath)
+        assert(fastq1.absolutePath != fastq3?.absolutePath)
+        assert(fastq2 == null || fastq2.absolutePath != fastq3?.absolutePath)
         HashMap<String, String> parameters = [readGroup: readGroup, bamFileName: bamFileName]
         if (config.pairedEnd) {
             if (!config.writeUnpairedFastq) {
