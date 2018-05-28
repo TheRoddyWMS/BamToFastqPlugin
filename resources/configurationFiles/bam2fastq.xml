@@ -20,7 +20,7 @@
         <cvalue name='JAVA_VERSION' value='1.8.0_131' type="string"/>
         <cvalue name='BIOBAMBAM_VERSION' value="2.0.87" type="string"/>
 
-        <cvalue name="converter" value="picard" type="string"
+        <cvalue name="converter" value="biobambam" type="string"
                 description="BAM to FASTQ converter. Default: picard. Allowed: picard, biobambam"/>
         <cvalue name="pairedEnd" value="true" type="boolean"
                 description="Whether the input BAMs are paired end BAMs."/>
