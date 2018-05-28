@@ -70,6 +70,8 @@ Tuning parameters are
 * sortMemory: Defaults to "10g"
 * sortThreads: Defaults to 4
 
+The workflow is not yet fully tuned and may anyway profit for tuning to the specific I/O and CPU characteristics of your environment. E.g. in a cloud environment CPU may be similar, but I/O may perform much worse than in our HPC environment.
+
 Dependent on the actual BAM to FASTQ converter other tuning options may be available (e.g. for the JVM).
 
 ### `run`/`rerun`
@@ -77,34 +79,25 @@ Dependent on the actual BAM to FASTQ converter other tuning options may be avail
 With the configuration XML from above the call for a single BAM file would be:
 
 ```bash
-roddy.sh run bam2fastq.any@convert testpid --useconfig=$pathToYourAppIni --useiodir=$inPath,$outPath --cvalues="bamfile_list:tumor_testpid_merged.mdup.bam"
+roddy.sh run bam2fastq.any@convert testpid --useconfig=$pathToYourAppIni --useiodir=$inPath,$outPath --cvalues="bamfile_list:/path/to/tumor_testpid_merged.mdup.bam"
 ```
 
-This will read in the directories in the `$inPath` and interpret them as datasets (e.g. patients). This call provides the list of BAM files and a matching list of sample types (`sample_list`) via a `--cvalue` parameter, that is as configuration value. Note that if multiple BAM files and corresponding sample types should be provided, these need to be separated with semi-colons. e.g.:
+The list of BAM files is taken from the `bamfile_list` configuration value. The BAMs do not have to reside below the `$inPath` and no further metadata are required, except for the read-groups, which are directly taken from the BAM headers. Multiple BAMs can be specified with semicolons `;` as separators:
 
 ```bash
-roddy.sh run bam2fastq.any@convert testpid --useconfig=$pathToYourAppIni --useiodir=$inPath,$outPath --cvalues="bamfile_list:tumor_testpid_merged.mdup.bam;normal_testpid_merged.mdup.bam"
+roddy.sh run bam2fastq.any@convert testpid --useconfig=$pathToYourAppIni --useiodir=$inPath,$outPath --cvalues="bamfile_list:/path/to/tumor_testpid_merged.mdup.bam;/path/to/normal_testpid_merged.mdup.bam"
 ```
 
-The `extractSamplesFromOutputFiles:false` makes sure that the sample types are not extracted from the BAM files (in most workflows these are output files of an alignment workflow, which explains the name of the configuration value).
+Concerning the "datasets" (here `testpid`): The above command will read in the directories in the `$inPath` and interpret them as datasets (e.g. patients). Among these subdirectories one needs to be called "testpid", like the requested dataset in the call above. This is the current situation but we plan to make the workflow able to e.g. retrieve BAM files following some filter critia (glob, regex) from the input directory and interpret the path from the input directory to the BAM as dataset name. 
 
-Use `rerun` to restart a failed workflow keeping old results.
-
+Use the `rerun` mode to restart a failed workflow while keeping already generated old results.
 
 ### `cleanup`
 
-Remove the unsorted FASTQ files. Currently, these files are not actually removed but truncated to size 0. The call is the identical to the one for `run` or `rerun` but uses the `cleanup` mode of Roddy.
+Remove the unsorted FASTQ files. Currently, these files are not actually removed but truncated to size 0. The call is identical to the one for `run` or `rerun` but uses the `cleanup` mode of Roddy.
 
 ```bash
 roddy.sh cleanup $configName@convert --useconfig=$pathToYourAppIni
-```
-
-
-
-```bash
-roddy.sh rerun $configName@convert \
-  --useconfig=$pathToYourAppIni \
-  --cvalues="sample_list:tumor;tumor;tumor;tumor;tumor;normal;normal;normal,possibleControlSampleNamePrefixes:normal,possibleTumorSampleNamePrefixes:tumor,bamfile_list:/icgc/dkfzlsdf/analysis/B080/kensche/tests/AlignmentAndQCWorkflows_1.2.73-OTPConfig-1.5-Roddy-2.4/OTPTest-AQCWF-WGS-1-2-Roddy-2-4.Picard.SoftwareBwa.WGS/tumor_testpid_merged.mdup.bam,extractSamplesFromOutputFiles:false"
 ```
 
 ## Unsorted Notes
