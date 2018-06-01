@@ -65,7 +65,7 @@ setUp_BashSucksVersion() {
     trap cleanUp_BashSucksVersion EXIT
 }
 cleanUp_BashSucksVersion() {
-    if !debug && [[ -v tmpFiles && ${#tmpFiles[@]} -gt 1 ]]; then
+    if ! debug && [[ -v tmpFiles && ${#tmpFiles[@]} -gt 1 ]]; then
         # Bash sucks, even 4.4. An empty array does not exist! So if there are no tempfiles, then there is no array and set -u will show an error!
         # The following line deletes the last array element (non-sparse arrays), which is the 'dummy' value.
         for f in ${tmpFiles[@]}; do
@@ -92,7 +92,7 @@ setUp() {
     declare -g -a -x pids=()
 }
 cleanUp() {
-    if !debug && [[ -v tmpFiles && ${#tmpFiles[@]} -gt 0 ]]; then
+    if ! debug && [[ -v tmpFiles && ${#tmpFiles[@]} -gt 0 ]]; then
         for f in "${tmpFiles[@]}"; do
             if [[ -d "$f" ]]; then
                 rmdir "$f"
