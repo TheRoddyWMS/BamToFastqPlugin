@@ -65,12 +65,13 @@ setUp_BashSucksVersion() {
     trap cleanUp_BashSucksVersion EXIT
 }
 cleanUp_BashSucksVersion() {
-    if [[ !debug && -v tmpFiles && ${#tmpFiles} -gt 1 ]]; then
+    if !debug && [[ -v tmpFiles && ${#tmpFiles[@]} -gt 1 ]]; then
         # Bash sucks, even 4.4. An empty array does not exist! So if there are no tempfiles, then there is no array and set -u will show an error!
         # The following line deletes the last array element (non-sparse arrays), which is the 'dummy' value.
-	    unset 'tmpFiles[ ${#tmpFiles[@]}-1 ]'
-	    for f in "${tmpFiles[@]}"; do
-	        if [[ -d "$f" ]]; then
+        for f in ${tmpFiles[@]}; do
+            if [[ "$f" == "dummy" ]]; then
+                continue
+	        elif [[ -d "$f" ]]; then
                 rmdir "$f"
             elif [[ -e "$f" ]]; then
                 rm "$f"
@@ -80,7 +81,7 @@ cleanUp_BashSucksVersion() {
     fi
 }
 
-# These versions only works with Bash 4.4+. Prior version do not really declare the array variables with empty values and set -u results in error message.
+# These versions only works with Bash >4.4. Prior version do not really declare the array variables with empty values and set -u results in error message.
 waitForAll() {
     jobs
     wait ${pids[@]}
@@ -91,7 +92,7 @@ setUp() {
     declare -g -a -x pids=()
 }
 cleanUp() {
-    if [[ !debug && -v tmpFiles && ${#tmpFiles} -gt 0 ]]; then
+    if !debug && [[ -v tmpFiles && ${#tmpFiles[@]} -gt 0 ]]; then
         for f in "${tmpFiles[@]}"; do
             if [[ -d "$f" ]]; then
                 rmdir "$f"
@@ -99,6 +100,7 @@ cleanUp() {
                 rm "$f"
             fi
         done
+        tmpFiles=()
     fi
 }
 
