@@ -11,8 +11,16 @@ WORKFLOWLIB___SHELL_OPTIONS=$(set +o)
 set +o verbose
 set +o xtrace
 
+normalizeBoolean() {
+    if [[ "${1:-false}" == "true" ]]; then
+        echo "true"
+    else
+        echo "false"
+    fi
+}
+
 debug() {
-    test "${debug:-false}" == "true"
+    normalizeBoolean "$debug"
 }
 
 mkFifo() {
@@ -69,7 +77,7 @@ setUp_BashSucksVersion() {
     trap cleanUp_BashSucksVersion EXIT
 }
 cleanUp_BashSucksVersion() {
-    if ! debug && [[ -v tmpFiles && ${#tmpFiles[@]} -gt 1 ]]; then
+    if [[ $(debug) == "false" && -v tmpFiles && ${#tmpFiles[@]} -gt 1 ]]; then
         for f in ${tmpFiles[@]}; do
             if [[ "$f" == "$ARRAY_ELEMENT_DUMMY" ]]; then
                 continue
@@ -94,7 +102,7 @@ setUp() {
     declare -g -a -x pids=()
 }
 cleanUp() {
-    if ! debug && [[ -v tmpFiles && ${#tmpFiles[@]} -gt 0 ]]; then
+    if [[ $(debug) == "false" && -v tmpFiles && ${#tmpFiles[@]} -gt 0 ]]; then
         for f in "${tmpFiles[@]}"; do
             if [[ -d "$f" ]]; then
                 rmdir "$f"
