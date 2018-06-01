@@ -71,7 +71,7 @@ cleanUp_BashSucksVersion() {
         for f in ${tmpFiles[@]}; do
             if [[ "$f" == "dummy" ]]; then
                 continue
-	        elif [[ -d "$f" ]]; then
+            elif [[ -d "$f" ]]; then
                 rmdir "$f"
             elif [[ -e "$f" ]]; then
                 rm "$f"
