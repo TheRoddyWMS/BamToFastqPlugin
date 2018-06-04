@@ -6,7 +6,7 @@ Basically two simple steps are taken. First the BAM is converted to one or multi
 
 ## Software Requirements
 
-The workflow has very few requirements. Beyond a working [Roddy](https://github.com/TheRoddyWMS/Roddy) installation, it uses Picard for the actual BAM-to-FASTQ conversion and coreutils sort for the name-sorting of fastqs.
+The workflow has very few requirements. Beyond a working [Roddy](https://github.com/TheRoddyWMS/Roddy) installation, it uses Biobambam or Picard for the actual BAM-to-FASTQ conversion and coreutils sort for the name-sorting of FASTQs.
 
 ### Conda
 
@@ -58,19 +58,19 @@ A basic configuration may look like this:
 Have a look at the `resources/configurationFiles/bam2fastq.xml` file for a complete list of parameters. The most important options are:
 
 * converter: Actual tool used for the BAM to FASTQ conversion. Currently, supported are `biobambam` (bamtofastq) and `picard` (SamToFastq).
-* outputPerReadGroup: By default, read in the BAM an produce one set of FASTQs (single, pair, unsorted) for each read-group. Splitting by read-groups allows parallelization of sorting on different nodes and is more performant (due to O(n*log(n)) sorting cost).
+* outputPerReadGroup: By default, read in the BAM and produce one set of FASTQs (single, pair, unsorted) for each read-group. Splitting by read-groups allows parallelization of sorting on different nodes and, because of the smaller files, is more performant (due to O(n*log(n)) sorting cost).
 * readGroupTag: The tag in the BAM header that identifies the name of the read-group. Defaults to "id"
 * sortFastqs: Do you want to run the sortFastq step?
 * checktFastqMd5: While reading in intermediate FASTQs, check that the MD5 is the same as in the accompanied '.md5' file.
 
 Tuning parameters are
 
-* sortCompressor: Compress temporary files during the sorting. By default `pigz` is used for parallel compression/decompression.
-* compressorThreads: Used by `pigz` for temporary file compression. Currently defaulting to 4 cores.
 * sortMemory: Defaults to "10g"
 * sortThreads: Defaults to 4
+* sortCompressor: Compress temporary files during the sorting. By default `pigz.sh` -- a wrapper for pigz in the plugin -- is used for parallel compression/decompression. See the corutils sort documentation for requirements on the interface of the compression tool.
+* compressorThreads: Used by `pigz` for temporary file compression. Currently defaulting to 4 cores.
 
-The workflow is not yet fully tuned and may anyway profit for tuning to the specific I/O and CPU characteristics of your environment. E.g. in a cloud environment CPU may be similar, but I/O may perform much worse than in our HPC environment.
+The workflow is not yet fully tuned and may anyway profit from tuning to the specific I/O and CPU characteristics of your environment. E.g. in a cloud environment CPU may be similar, but I/O may perform much worse than in our HPC environment.
 
 Dependent on the actual BAM to FASTQ converter other tuning options may be available (e.g. for the JVM).
 
