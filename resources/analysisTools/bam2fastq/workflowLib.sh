@@ -11,9 +11,16 @@ WORKFLOWLIB___SHELL_OPTIONS=$(set +o)
 set +o verbose
 set +o xtrace
 
+normalizeBoolean() {
+    if [[ "${1:-false}" == "true" ]]; then
+        echo "true"
+    else
+        echo "false"
+    fi
+}
 
 debug() {
-    test "${debug:-false}" == "true"
+    normalizeBoolean "$debug"
 }
 
 mkFifo() {
@@ -49,38 +56,42 @@ reverseArray() {
     echo $c
 }
 
-# Bash sucks. An empty array does not exist! So if there are no tempfiles, then there is no array and set -u will show an error!
-# Therefore we put a dummy value into the arrays.
+# Bash sucks. An empty array does not exist! So if there are no tempfiles/pids, then there is no array and set -u will result an error!
+# Therefore we put a dummy value into the arrays and have to take care to remove the dummy before the processing.
+# The dummy contains a random string to avoid collision with possible filenames (the filename 'dummy' is quite likely).
+ARRAY_ELEMENT_DUMMY=$(mktemp -u "_dummy_XXXXX")
+
 waitForAll_BashSucksVersion() {
     jobs
-    declare -a realPids=${pids[@]:1:${#pids[@]}}
-    wait ${realPids[@]}
-    pids=(dummy)
+    declare -a realPids=$(for pid in "${pids[@]}"; do if [[ "$pid" != "$ARRAY_ELEMENT_DUMMY" ]]; then echo "$pid"; fi; done)
+    if [[ -v realPids && ${#realPids[@]} -gt 0 ]]; then
+        wait ${realPids[@]}
+    fi
+    pids=("$ARRAY_ELEMENT_DUMMY")
 }
 setUp_BashSucksVersion() {
-    declare -g -a -x tmpFiles=(dummy)
-    declare -g -a -x pids=(dummy)
+    declare -g -a -x tmpFiles=("$ARRAY_ELEMENT_DUMMY")
+    declare -g -a -x pids=("$ARRAY_ELEMENT_DUMMY")
 
     # Remove all registered temporary files upon exit
     trap cleanUp_BashSucksVersion EXIT
 }
 cleanUp_BashSucksVersion() {
-    if [[ !debug && -v tmpFiles && ${#tmpFiles} -gt 1 ]]; then
-        # Bash sucks, even 4.4. An empty array does not exist! So if there are no tempfiles, then there is no array and set -u will show an error!
-        # The following line deletes the last array element (non-sparse arrays), which is the 'dummy' value.
-	    unset 'tmpFiles[ ${#tmpFiles[@]}-1 ]'
-	    for f in "${tmpFiles[@]}"; do
-	        if [[ -d "$f" ]]; then
+    if [[ $(debug) == "false" && -v tmpFiles && ${#tmpFiles[@]} -gt 1 ]]; then
+        for f in ${tmpFiles[@]}; do
+            if [[ "$f" == "$ARRAY_ELEMENT_DUMMY" ]]; then
+                continue
+            elif [[ -d "$f" ]]; then
                 rmdir "$f"
             elif [[ -e "$f" ]]; then
                 rm "$f"
             fi
         done
-        tmpFiles=(dummy)
+        tmpFiles=("$ARRAY_ELEMENT_DUMMY")
     fi
 }
 
-# These versions only works with Bash 4.4+. Prior version do not really declare the array variables with empty values and set -u results in error message.
+# These versions only works with Bash >4.4. Prior version do not really declare the array variables with empty values and set -u results in error message.
 waitForAll() {
     jobs
     wait ${pids[@]}
@@ -91,7 +102,7 @@ setUp() {
     declare -g -a -x pids=()
 }
 cleanUp() {
-    if [[ !debug && -v tmpFiles && ${#tmpFiles} -gt 0 ]]; then
+    if [[ $(debug) == "false" && -v tmpFiles && ${#tmpFiles[@]} -gt 0 ]]; then
         for f in "${tmpFiles[@]}"; do
             if [[ -d "$f" ]]; then
                 rmdir "$f"
@@ -99,6 +110,7 @@ cleanUp() {
                 rm "$f"
             fi
         done
+        tmpFiles=()
     fi
 }
 
