@@ -32,7 +32,7 @@
                 description="Create one or two FASTQs per read-group for single- or paired-end BAMs, respectively. Default: true."/>
         <cvalue name="readGroupTag" value="id" type="string"
                 description="Name of the tag in the BAM header containing the name of the read-group. Default: id"/>
-        <cvalue name="fastqOutputDirectory" value="${outputAnalysisBaseDirectory}"
+        <cvalue name="fastqOutputDirectory" value="${outputAnalysisBaseDirectory}/bam2fastq"
                 description="To write files to e.g. outpath/bamFileBasename use just '${outputAnalysisBaseDirectory}'."/>
         <cvalue name="compressIntermediateFastqs" value="true" type="boolean"
                 description="Intermediate files produced by Picard (probably position-sorted) may be compressed. Default: true"/>
@@ -60,6 +60,9 @@
                 description="Memory used for storing data while sorting. Is passed to the sorting tool and should follow its required syntax. WARNING: Also adapt the job requirements!"/>
         <cvalue name="sortThreads" value="4" type="string"
                 description="The number of parallel threads used for sorting."/>
+
+        <cvalue name="debug" value="false" type="boolean"
+                description="Defines whether debug mode is active or not. If active, e.g. temp files/folders will be kept."/>
 
     </configurationvalues>
 

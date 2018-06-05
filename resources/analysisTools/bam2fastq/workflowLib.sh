@@ -19,8 +19,8 @@ normalizeBoolean() {
     fi
 }
 
-debug() {
-    normalizeBoolean "$debug"
+isDebugSet() {
+    normalizeBoolean "${debug:-false}"
 }
 
 mkFifo() {
@@ -77,7 +77,7 @@ setUp_BashSucksVersion() {
     trap cleanUp_BashSucksVersion EXIT
 }
 cleanUp_BashSucksVersion() {
-    if [[ $(debug) == "false" && -v tmpFiles && ${#tmpFiles[@]} -gt 1 ]]; then
+    if [[ $(isDebugSet) == "false" && -v tmpFiles && ${#tmpFiles[@]} -gt 1 ]]; then
         for f in ${tmpFiles[@]}; do
             if [[ "$f" == "$ARRAY_ELEMENT_DUMMY" ]]; then
                 continue
@@ -102,7 +102,7 @@ setUp() {
     declare -g -a -x pids=()
 }
 cleanUp() {
-    if [[ $(debug) == "false" && -v tmpFiles && ${#tmpFiles[@]} -gt 0 ]]; then
+    if [[ $(isDebugSet) == "false" && -v tmpFiles && ${#tmpFiles[@]} -gt 0 ]]; then
         for f in "${tmpFiles[@]}"; do
             if [[ -d "$f" ]]; then
                 rmdir "$f"

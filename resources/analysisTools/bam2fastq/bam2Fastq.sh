@@ -97,7 +97,7 @@ processPairedEndWithReadGroupsBiobambam() {
     local baseName=$(basename "$FILENAME_BAM" .bam)
 
     ## Write all read-group FASTQs into a directory.
-    local tmpReadGroupDir="$outputAnalysisBaseDirectory/${baseName}_bam2fastq_temp"
+    local tmpReadGroupDir="${fastqOutputDirectory}/${baseName}_bam2fastq_temp"
     registerTmpFile "$tmpReadGroupDir"
     mkdir -p "$tmpReadGroupDir" || throw 1 "Could not create output directory '$tmpReadGroupDir'"
 
@@ -170,7 +170,7 @@ processPairedEndWithReadGroupsPicard() {
     local baseName=$(basename "$FILENAME_BAM" .bam)
 
     ## Write all read-group FASTQs into a directory.
-    local tmpReadGroupDir="$outputAnalysisBaseDirectory/${baseName}_bam2fastq_temp"
+    local tmpReadGroupDir="${fastqOutputDirectory}/${baseName}_bam2fastq_temp"
     registerTmpFile "$tmpReadGroupDir"
     mkdir -p "$tmpReadGroupDir" || throw 1 "Could not create output directory '$tmpReadGroupDir'"
 
