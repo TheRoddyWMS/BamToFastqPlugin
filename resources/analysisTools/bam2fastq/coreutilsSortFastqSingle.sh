@@ -60,7 +60,7 @@ setUp_BashSucksVersion
 
 tmpSortedFastq="$FILENAME_SORTED_FASTQ.tmp"
 
-if [[ "${checkFastqMd5:-false}" == true ]]; then
+if [[ "${checkFastqMd5:-false}" == true && "${converter:-biobambam}" == "picard" ]]; then
     sortFastqWithMd5Check "$FILENAME_FASTQ" "$tmpSortedFastq"
 else
     sortFastq "$FILENAME_FASTQ" "$tmpSortedFastq"

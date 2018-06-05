@@ -51,7 +51,7 @@
         <cvalue name='sortFastqsWith' value='coreutils' type='boolean'
                 description='Currently only coreutils, which uses coreutils "sort".'/>
         <cvalue name="checkFastqMd5" value="true" type="boolean"
-                description="While reading in intermediate FASTQs, check that the MD5 is the same as in the accompanied '.md5' file."/>
+                description="While reading in intermediate FASTQs, check that the MD5 is the same as in the accompanied '.md5' file. Only available for Picard, as Biobambam does not produce MD5 files for output files."/>
         <cvalue name='sortCompressor' value='${TOOL_PIGZ}' type="string"
                 description="Compression tool for temporary files created by coreutils sort. Needs to compress the stdin and write to stdout without options and decompress using the -d option. By using pigz (${TOOL_PIGZ}) you can increase the number of cores used for compression."/>
         <cvalue name="compressorThreads" value="4" type="string"
