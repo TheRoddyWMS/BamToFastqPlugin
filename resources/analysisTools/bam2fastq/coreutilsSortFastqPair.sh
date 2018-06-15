@@ -131,7 +131,7 @@ setUp_BashSucksVersion
 tmpSortedFastq1="$FILENAME_SORTED_FASTQ1.tmp"
 tmpSortedFastq2="$FILENAME_SORTED_FASTQ2.tmp"
 
-if [[ "${checkFastqMd5:-false}" == true ]]; then
+if [[ "${checkFastqMd5:-false}" == true && "${converter:-biobambam}" == "picard" ]]; then
     sortFastqPairWithMd5Check "$FILENAME_FASTQ1" "$FILENAME_FASTQ2" "$tmpSortedFastq1" "$tmpSortedFastq2"
 else
     sortFastqPair "$FILENAME_FASTQ1" "$FILENAME_FASTQ2" "$tmpSortedFastq1" "$tmpSortedFastq2"

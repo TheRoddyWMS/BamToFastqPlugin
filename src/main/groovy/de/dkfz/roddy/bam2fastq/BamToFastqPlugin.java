@@ -9,8 +9,8 @@ import de.dkfz.roddy.plugins.BasePlugin;
 
 class BamToFastqPlugin extends BasePlugin {
 
-    public static final String CURRENT_VERSION_STRING = "0.0.27";
-    public static final String CURRENT_VERSION_BUILD_DATE = "Wed May 16 11:19:58 CEST 2018";
+    public static final String CURRENT_VERSION_STRING = "0.0.29";
+    public static final String CURRENT_VERSION_BUILD_DATE = "Wed May 30 10:12:41 CEST 2018";
 
     @Override
     public String getVersionInfo() {

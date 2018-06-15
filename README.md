@@ -6,7 +6,7 @@ Basically two simple steps are taken. First the BAM is converted to one or multi
 
 ## Software Requirements
 
-The workflow has very few requirements. Beyond a working [Roddy](https://github.com/TheRoddyWMS/Roddy) installation, it uses Picard for the actual BAM-to-FASTQ conversion and coreutils sort for the name-sorting of fastqs.
+The workflow has very few requirements. Beyond a working [Roddy](https://github.com/TheRoddyWMS/Roddy) installation, it uses Biobambam or Picard for the actual BAM-to-FASTQ conversion and coreutils sort for the name-sorting of FASTQs.
 
 ### Conda
 
@@ -58,17 +58,19 @@ A basic configuration may look like this:
 Have a look at the `resources/configurationFiles/bam2fastq.xml` file for a complete list of parameters. The most important options are:
 
 * converter: Actual tool used for the BAM to FASTQ conversion. Currently, supported are `biobambam` (bamtofastq) and `picard` (SamToFastq).
-* outputPerReadGroup: By default, read in the BAM an produce one set of FASTQs (single, pair, unsorted) for each read-group. Splitting by read-groups allows parallelization of sorting on different nodes and is more performant (due to O(n*log(n)) sorting cost).
+* outputPerReadGroup: By default, read in the BAM and produce one set of FASTQs (single, pair, unsorted) for each read-group. Splitting by read-groups allows parallelization of sorting on different nodes and, because of the smaller files, is more performant (due to O(n*log(n)) sorting cost).
 * readGroupTag: The tag in the BAM header that identifies the name of the read-group. Defaults to "id"
 * sortFastqs: Do you want to run the sortFastq step?
 * checktFastqMd5: While reading in intermediate FASTQs, check that the MD5 is the same as in the accompanied '.md5' file.
 
 Tuning parameters are
 
-* sortCompressor: Compress temporary files during the sorting. By default `pigz` is used for parallel compression/decompression.
-* compressorThreads: Used by `pigz` for temporary file compression. Currently defaulting to 4 cores.
 * sortMemory: Defaults to "10g"
 * sortThreads: Defaults to 4
+* sortCompressor: Compress temporary files during the sorting. By default `pigz.sh` -- a wrapper for pigz in the plugin -- is used for parallel compression/decompression. See the corutils sort documentation for requirements on the interface of the compression tool.
+* compressorThreads: Used by `pigz` for temporary file compression. Currently defaulting to 4 cores.
+
+The workflow is not yet fully tuned and may anyway profit from tuning to the specific I/O and CPU characteristics of your environment. E.g. in a cloud environment CPU may be similar, but I/O may perform much worse than in our HPC environment.
 
 Dependent on the actual BAM to FASTQ converter other tuning options may be available (e.g. for the JVM).
 
@@ -77,34 +79,25 @@ Dependent on the actual BAM to FASTQ converter other tuning options may be avail
 With the configuration XML from above the call for a single BAM file would be:
 
 ```bash
-roddy.sh run bam2fastq.any@convert testpid --useconfig=$pathToYourAppIni --useiodir=$inPath,$outPath --cvalues="bamfile_list:tumor_testpid_merged.mdup.bam"
+roddy.sh run bam2fastq.any@convert testpid --useconfig=$pathToYourAppIni --useiodir=$inPath,$outPath --cvalues="bamfile_list:/path/to/tumor_testpid_merged.mdup.bam"
 ```
 
-This will read in the directories in the `$inPath` and interpret them as datasets (e.g. patients). This call provides the list of BAM files and a matching list of sample types (`sample_list`) via a `--cvalue` parameter, that is as configuration value. Note that if multiple BAM files and corresponding sample types should be provided, these need to be separated with semi-colons. e.g.:
+The list of BAM files is taken from the `bamfile_list` configuration value. The BAMs do not have to reside below the `$inPath` and no further metadata are required, except for the read-groups, which are directly taken from the BAM headers. Multiple BAMs can be specified with semicolons `;` as separators:
 
 ```bash
-roddy.sh run bam2fastq.any@convert testpid --useconfig=$pathToYourAppIni --useiodir=$inPath,$outPath --cvalues="bamfile_list:tumor_testpid_merged.mdup.bam;normal_testpid_merged.mdup.bam"
+roddy.sh run bam2fastq.any@convert testpid --useconfig=$pathToYourAppIni --useiodir=$inPath,$outPath --cvalues="bamfile_list:/path/to/tumor_testpid_merged.mdup.bam;/path/to/normal_testpid_merged.mdup.bam"
 ```
 
-The `extractSamplesFromOutputFiles:false` makes sure that the sample types are not extracted from the BAM files (in most workflows these are output files of an alignment workflow, which explains the name of the configuration value).
+Concerning the "datasets" (here `testpid`): The above command will read in the directories in the `$inPath` and interpret them as datasets (e.g. patients). Among these subdirectories one needs to be called "testpid", like the requested dataset in the call above. This is the current situation but we plan to make the workflow able to e.g. retrieve BAM files following some filter critia (glob, regex) from the input directory and interpret the path from the input directory to the BAM as dataset name. 
 
-Use `rerun` to restart a failed workflow keeping old results.
-
+Use the `rerun` mode to restart a failed workflow while keeping already generated old results.
 
 ### `cleanup`
 
-Remove the unsorted FASTQ files. Currently, these files are not actually removed but truncated to size 0. The call is the identical to the one for `run` or `rerun` but uses the `cleanup` mode of Roddy.
+Remove the unsorted FASTQ files. Currently, these files are not actually removed but truncated to size 0. The call is identical to the one for `run` or `rerun` but uses the `cleanup` mode of Roddy.
 
 ```bash
 roddy.sh cleanup $configName@convert --useconfig=$pathToYourAppIni
-```
-
-
-
-```bash
-roddy.sh rerun $configName@convert \
-  --useconfig=$pathToYourAppIni \
-  --cvalues="sample_list:tumor;tumor;tumor;tumor;tumor;normal;normal;normal,possibleControlSampleNamePrefixes:normal,possibleTumorSampleNamePrefixes:tumor,bamfile_list:/icgc/dkfzlsdf/analysis/B080/kensche/tests/AlignmentAndQCWorkflows_1.2.73-OTPConfig-1.5-Roddy-2.4/OTPTest-AQCWF-WGS-1-2-Roddy-2-4.Picard.SoftwareBwa.WGS/tumor_testpid_merged.mdup.bam,extractSamplesFromOutputFiles:false"
 ```
 
 ## Unsorted Notes

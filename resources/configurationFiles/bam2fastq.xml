@@ -20,7 +20,7 @@
         <cvalue name='JAVA_VERSION' value='1.8.0_131' type="string"/>
         <cvalue name='BIOBAMBAM_VERSION' value="2.0.87" type="string"/>
 
-        <cvalue name="converter" value="picard" type="string"
+        <cvalue name="converter" value="biobambam" type="string"
                 description="BAM to FASTQ converter. Default: picard. Allowed: picard, biobambam"/>
         <cvalue name="pairedEnd" value="true" type="boolean"
                 description="Whether the input BAMs are paired end BAMs."/>
@@ -32,7 +32,7 @@
                 description="Create one or two FASTQs per read-group for single- or paired-end BAMs, respectively. Default: true."/>
         <cvalue name="readGroupTag" value="id" type="string"
                 description="Name of the tag in the BAM header containing the name of the read-group. Default: id"/>
-        <cvalue name="fastqOutputDirectory" value="${outputAnalysisBaseDirectory}"
+        <cvalue name="fastqOutputDirectory" value="${outputAnalysisBaseDirectory}/bam2fastq"
                 description="To write files to e.g. outpath/bamFileBasename use just '${outputAnalysisBaseDirectory}'."/>
         <cvalue name="compressIntermediateFastqs" value="true" type="boolean"
                 description="Intermediate files produced by Picard (probably position-sorted) may be compressed. Default: true"/>
@@ -51,7 +51,7 @@
         <cvalue name='sortFastqsWith' value='coreutils' type='boolean'
                 description='Currently only coreutils, which uses coreutils "sort".'/>
         <cvalue name="checkFastqMd5" value="true" type="boolean"
-                description="While reading in intermediate FASTQs, check that the MD5 is the same as in the accompanied '.md5' file."/>
+                description="While reading in intermediate FASTQs, check that the MD5 is the same as in the accompanied '.md5' file. Only available for Picard, as Biobambam does not produce MD5 files for output files."/>
         <cvalue name='sortCompressor' value='${TOOL_PIGZ}' type="string"
                 description="Compression tool for temporary files created by coreutils sort. Needs to compress the stdin and write to stdout without options and decompress using the -d option. By using pigz (${TOOL_PIGZ}) you can increase the number of cores used for compression."/>
         <cvalue name="compressorThreads" value="4" type="string"
@@ -60,6 +60,9 @@
                 description="Memory used for storing data while sorting. Is passed to the sorting tool and should follow its required syntax. WARNING: Also adapt the job requirements!"/>
         <cvalue name="sortThreads" value="4" type="string"
                 description="The number of parallel threads used for sorting."/>
+
+        <cvalue name="debug" value="false" type="boolean"
+                description="Defines whether debug mode is active or not. If active, e.g. temp files/folders will be kept."/>
 
     </configurationvalues>
 
