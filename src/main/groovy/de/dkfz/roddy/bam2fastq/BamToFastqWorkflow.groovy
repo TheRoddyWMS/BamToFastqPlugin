@@ -119,7 +119,7 @@ class BamToFastqWorkflow extends Workflow {
                 throw new ConfigurationError("Single-end sortFastq not implemented", config.FLAG_PAIRED_END)
             }
         } else {
-            call_fileObject(TOOL_SORT_FASTQ_PAIR, fastq1, parameters)
+            call_fileObject(TOOL_SORT_FASTQ_SINGLE, fastq1, parameters)
         }
     }
 
