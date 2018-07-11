@@ -24,41 +24,12 @@ sortFastqPair() {
         sourceCommand="$compressor -d"
     fi
 
-    local linear1Fifo=$(createFifo $(tmpBaseFile "$infile1")".linearized.fifo")
-    local linear2Fifo=$(createFifo $(tmpBaseFile "$infile2")".linearized.fifo")
-    local sorted1Fifo=$(createFifo $(tmpBaseFile "$outfile1")".sorted.fifo")
-    local sorted2Fifo=$(createFifo $(tmpBaseFile "$outfile2")".sorted.fifo")
+    local linear1Fifo=$(linearizeStream "$infile1" 1)
+    local linear2Fifo=$(linearizeStream "$infile1" 2)
+    local sorted1Fifo=$(delinearizeStream "$outfile1" 1)
+    local sorted2Fifo=$(delinearizeStream "$outfile2" 2)
 
-    $sourceCommand "$infile1" \
-        | fastqLinearize \
-        > "$linear1Fifo" \
-        & registerPid \
-        || throw 1 "Error linearization 1"
-
-    $sourceCommand "$infile2" \
-        | fastqLinearize \
-        > "$linear2Fifo" \
-        & registerPid \
-        || throw 2 "Error linearization 2"
-
-
-    cat "$sorted1Fifo" \
-        | fastqDelinearize \
-        | "$compressor" \
-        | md5File "$outfile1.md5" \
-        > "$outfile1" \
-        & registerPid \
-        || throw 3 "Error delinearization 1"
-
-    cat "$sorted2Fifo" \
-        | fastqDelinearize \
-        | "$compressor" \
-        | md5File "$outfile2.md5" \
-        > "$outfile2" \
-        & registerPid \
-        || throw 4 "Error delinearization 2"
-
-    # Note that this temporary file directory must not be node-local. It contains too much data.
+    # Note that this temporary file directory should currently not be node-local. It contains too much data.
     local sortTmp=$(dirname "$outfile1")"/sort_tmp"
     mkdir -p "$sortTmp"
     registerTmpFile "$sortTmp"
@@ -66,6 +37,7 @@ sortFastqPair() {
 
     ## TODO Check here that the two files have the some order (just check the two ID columns 1 == 5)
     paste "$linear1Fifo" "$linear2Fifo" \
+        | checkMatchingReadsInPastedLinearizedFastqs \
         | sortLinearizedFastqStream "$sortTmp" \
         | mbuf 100m \
             -f -o >(cut -f 1-4 > "$sorted1Fifo") \

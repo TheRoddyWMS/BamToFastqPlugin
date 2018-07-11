@@ -193,4 +193,56 @@ sortLinearizedFastqStream() {
     fi
 }
 
+reportLineNumber() {
+    local message="${1:-Number of lines in stream}"
+    local tmpFile=$(createTmpFile)
+    tee >(wc -l | cut -f 2 > "$tmpFile")
+    echo "$message: "$(cat "$tmpFile") >> /dev/stderr
+}
+
+# Given an input FASTQ produce a linearized (4 FASTQ lines in one output line with tabulator as separators).
+# Output is written to a FIFO whose name is reported on STDOUT.
+# The function registers temporary files and running processes and reports the number of input reads on STDERR.
+linearizeStream() {
+    local infile="${1:?No input FASTQ}"
+    local number="${2:?No FASTQ index}"
+    local linearFifo=$(createFifo $(tmpBaseFile "$infile")".linearized.fifo")
+    $sourceCommand "$infile" \
+        | fastqLinearize \
+        | reportLineNumber "Number of reads input $number" \
+        > "$linearFifo" \
+        & registerPid \
+        || throw 1 "Error linearization $number"
+    echo "$linearFifo"
+}
+
+# Given a sorted input stream of one FASTQ via STDIN, report the number of reads, delinearize the stream into
+# a normal FASTQ output, create an $outfile.md5 and write the output to a FIFO, whose name is reported on STDOUT.
+# The function registers temporary files and running processes and reports the number of input reads on STDERR.
+delinearizeStream() {
+    local outfile="${1:?No output name given}"
+    local number="${2:?No FASTQ index}"
+    local sortedFifo=$(createFifo $(tmpBaseFile "$outfile")".sorted.fifo")
+    cat "$sortedFifo" \
+        | reportLineNumber "Number of reads output $number" \
+        | fastqDelinearize \
+        | "$compressor" \
+        | md5File "$outfile.md5" \
+        > "$outfile" \
+        & registerPid \
+        || throw 3 "Error delinearization $number"
+    echo "$sortedFifo"
+}
+
+# Given a STDIN stream of two linearized FASTQs for read 1 and 2, pasted in that order, check that always read 1 name is the same as read 2 name.
+# Throw an exception if a difference is found. Write the input stream back via STDOUT for further processing.
+checkMatchingReadsInPastedLinearizedFastqs() {
+    perl \
+      -aF'\t' \
+      -ne 'sub fid($) { my ($id) = @_; $id =~ s/\/[12]\$//; return $id; } if (fid($F[0]) ne fid($F[4])) { print STDERR "Disorder at\n" . join("\t", @F); exit(101); }' \
+        || throw 150 "Pasted linearized FASTQs did not have same order of reads for read 1 and 2"
+}
+
+
+
 eval "$WORKFLOWLIB___SHELL_OPTIONS"
