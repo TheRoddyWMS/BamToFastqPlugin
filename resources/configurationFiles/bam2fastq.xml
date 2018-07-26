@@ -123,7 +123,8 @@
             </output>
         </tool>
     </processingTools>
-    <filenames package='de.dkfz.b080.co.files' filestagesbase='de.dkfz.b080.co.files.COFileStage'>
+    <filenames>
+    <!--<filenames>-->
         <!-- Filenames are always stored in the pid's output folder -->
         <!-- Different variables can be used:
             - ${sourcefile}, use the name and the path of the file from which the new name is derived
@@ -145,7 +146,6 @@
             - You can put in configuration values to do this use:
               ${configValueName} or
               ${cvalue,name=[name of the value],default=".."} where default is optional.
-            - ${fileStageID} use the id String of the file's stage to build up the name.
             - ${fgindex}
             -->
         <!-- Pattern Matching: A filename can be matched to a file by
