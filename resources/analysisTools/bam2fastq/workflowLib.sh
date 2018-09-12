@@ -66,6 +66,10 @@ waitForAll_BashSucksVersion() {
     declare -a realPids=$(for pid in "${pids[@]}"; do if [[ "$pid" != "$ARRAY_ELEMENT_DUMMY" ]]; then echo "$pid"; fi; done)
     if [[ -v realPids && ${#realPids[@]} -gt 0 ]]; then
         wait ${realPids[@]}
+        declare EXIT_CODE=$?
+        if [[ ${EXIT_CODE} -ne 0 ]]; then
+            throw ${EXIT_CODE} "One of the following processes ended with exit code ${EXIT_CODE}: ${realPids[@]}"
+        fi
     fi
     pids=("$ARRAY_ELEMENT_DUMMY")
 }
@@ -84,7 +88,7 @@ cleanUp_BashSucksVersion() {
             elif [[ -d "$f" ]]; then
                 rmdir "$f"
             elif [[ -e "$f" ]]; then
-                rm "$f"
+                rm -f "$f"
             fi
         done
         tmpFiles=("$ARRAY_ELEMENT_DUMMY")

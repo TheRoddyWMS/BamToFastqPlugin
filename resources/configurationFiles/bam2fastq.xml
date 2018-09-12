@@ -95,9 +95,9 @@
         <tool name='sortFastqSingle' value='coreutilsSortFastqSingle.sh' basepath="bam2fastq">
             <resourcesets>
                 <rset size="t" memory="0.1" cores="8" nodes="1" walltime="00:10:00"/>
-                <rset size="m" memory="10G" cores="8" nodes="1" walltime="10:00:00"/>
-                <rset size="l" memory="10G" cores="8" nodes="1" walltime="50:00:00"/>
-                <rset size="xl" memory="10G" cores="8" nodes="1" walltime="100:00:00"/>
+                <rset size="m" memory="12G" cores="8" nodes="1" walltime="10:00:00"/>
+                <rset size="l" memory="12G" cores="8" nodes="1" walltime="50:00:00"/>
+                <rset size="xl" memory="12G" cores="8" nodes="1" walltime="100:00:00"/>
             </resourcesets>
             <input type="file" typeof="TextFile" scriptparameter='FILENAME_FASTQ'/>
             <input type="string" setby="callingCode" scriptparameter='readGroup'/>
@@ -107,9 +107,9 @@
         <tool name='sortFastqPair' value='coreutilsSortFastqPair.sh' basepath="bam2fastq">
             <resourcesets>
                 <rset size="t"  memory="0.1" cores="8" nodes="1" walltime="00:10:00"/>
-                <rset size="m"  memory="10G" cores="8" nodes="1" walltime="10:00:00"/>
-                <rset size="l"  memory="10G" cores="8" nodes="1" walltime="50:00:00"/>
-                <rset size="xl" memory="10G" cores="8" nodes="1" walltime="100:00:00"/>
+                <rset size="m"  memory="12G" cores="8" nodes="1" walltime="10:00:00"/>
+                <rset size="l"  memory="12G" cores="8" nodes="1" walltime="50:00:00"/>
+                <rset size="xl" memory="12G" cores="8" nodes="1" walltime="100:00:00"/>
             </resourcesets>
             <input type="file" typeof="TextFile" scriptparameter='FILENAME_FASTQ1'/>
             <input type="file" typeof="TextFile" scriptparameter='FILENAME_FASTQ2'/>
