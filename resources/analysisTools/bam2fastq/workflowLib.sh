@@ -88,7 +88,7 @@ cleanUp_BashSucksVersion() {
             elif [[ -d "$f" ]]; then
                 rmdir "$f"
             elif [[ -e "$f" ]]; then
-                rm "$f"
+                rm -f "$f"
             fi
         done
         tmpFiles=("$ARRAY_ELEMENT_DUMMY")
