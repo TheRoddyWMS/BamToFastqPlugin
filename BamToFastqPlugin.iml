@@ -19,6 +19,7 @@
     <orderEntry type="library" name="R User Library" level="project" />
     <orderEntry type="library" name="R Skeletons" level="application" />
     <orderEntry type="module" module-name="RoddyToolLib" />
+    <orderEntry type="library" name="Gradle: com.google.guava:guava:23.0" level="project" />
   </component>
   <component name="TestRunnerService">
     <option name="PROJECT_TEST_RUNNER" value="Unittests" />

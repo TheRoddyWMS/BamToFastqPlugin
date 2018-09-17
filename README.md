@@ -32,7 +32,17 @@ The name of the Conda environment is arbitrary but needs to be consistent with t
 
 In terms of Roddy "modes", the workflow has two targets, namely `run`/`rerun` to run the actual workflow and `cleanup` to remove the unsorted FASTQ files.
 
-### Basic Config
+The simplest way to start the workflow is without a dedicated configuration file by using the plugin-internal configuration:
+
+```bash
+roddy.sh run BamToFastqPlugin_$version:bam2fastqAnalysis $pid \
+  --useiodir=$inputDir,$outputDir \
+  --cvalues="bamfile_list:/path/to/your/data.bam"
+```
+
+The string `BamToFastqPlugin_$version:bam2fastqAnalysis` here is the name of the plugin -- that should also be used as part of the name of the plugin directory and the version of the plugin as found in the plugin directory. Thus, if you plugin's installation directory is called `BamToFastqPlugin_1.0.2`, then the used configuration would be `BamToFastqPlugin_1.0.2:bam2fastqAnalysis`.
+
+### Using a Configuration File
 
 A basic configuration may look like this:
 
