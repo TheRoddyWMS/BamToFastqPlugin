@@ -158,8 +158,6 @@
              -->
         <filename class="TextFile" onScriptParameter="FILENAME_UNSORTED_FASTQS"
                   pattern='${fastqOutputDirectory}/${sourcefileAtomic}_unsorted_fastqs/${sourcefileAtomicPrefix,delimiter="."}_${fgindex}.fastq.gz'/>
-        <!--<filename class='TextFile' onScriptParameter='FILENAME_SORTED_FASTQ'-->
-                  <!--pattern='${fastqOutputDirectory}/${bamFileName}_fastqs/${readGroup}/sequence/${sourcefileAtomicPrefix,delimiter="."}_${readGroup}.sorted.fastq.gz'/>-->
 
     </filenames>
 </configuration>
