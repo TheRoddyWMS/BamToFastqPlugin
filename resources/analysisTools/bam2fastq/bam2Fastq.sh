@@ -113,7 +113,7 @@ processPairedEndWithReadGroupsBiobambam() {
         filename="$FILENAME_BAM" \
         T="$tmpReadGroupDir/$baseName.bamtofastq_tmp" \
         outputperreadgroup=1 \
-        outputperreadgrouprgsm=1 \
+        outputperreadgrouprgsm=0 \
         outputdir="$tmpReadGroupDir" \
         collate=1 \
         colsbs=268435456 \
@@ -124,7 +124,6 @@ processPairedEndWithReadGroupsBiobambam() {
         outputperreadgroupsuffixO=_U1."$FASTQ_SUFFIX" \
         outputperreadgroupsuffixO2=_U2."$FASTQ_SUFFIX" \
         outputperreadgroupsuffixS=_S."$FASTQ_SUFFIX" \
-        outputperreadgrouprgsm=0 \
         exclude=$(bamtofastqExclusions)
 
     # Reads without group are assigned to 'default' group.
