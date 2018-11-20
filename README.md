@@ -102,6 +102,16 @@ Concerning the "datasets" (here `testpid`): The above command will read in the d
 
 Use the `rerun` mode to restart a failed workflow while keeping already generated old results.
 
+### Output
+
+Reads are classified into one of 5 groups:
+
+* R1, R2: paired reads (first and second) with matching mates found.
+* U1, U2: paired reads (first and second) for which no matching mates were found (=orphans). Obviously, these two files will not have the same order.
+* S: unpaired reads (singletons), i.e. reads that are not marked as being paired
+
+The workflow produces one unsorted and one sorted GZipped FASTQ for each of these categories and for each read group in the input BAM. This includes a "default" read-group for reads that are not assigned to any group. For paired and matched reads the read 1 and read 2 FASTQs always will have the same order. This means, that in many cases your reads will only be in the R1 and R2 classes for paired-end data or in the S class for single end data.
+
 ### `cleanup`
 
 Remove the unsorted FASTQ files. Currently, these files are not actually removed but truncated to size 0. The call is identical to the one for `run` or `rerun` but uses the `cleanup` mode of Roddy.
