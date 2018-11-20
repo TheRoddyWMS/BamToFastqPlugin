@@ -139,6 +139,8 @@ fi
 
 waitForAll_BashSucksVersion
 
+sleep 5   # Wait for network filesystem delays
+
 mv "$tmpSortedFastq1"     "$FILENAME_SORTED_FASTQ1"     || throw 35 "Could not move '$tmpSortedFastq1' to '$FILENAME_SORTED_FASTQ1'"
 mv "$tmpSortedFastq1.md5" "$FILENAME_SORTED_FASTQ1.md5" || throw 35 "Could not move '$tmpSortedFastq1.md5' to '$FILENAME_SORTED_FASTQ1.md5'"
 

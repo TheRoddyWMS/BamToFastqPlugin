@@ -77,7 +77,7 @@ class BamToFastqWorkflow extends Workflow {
                             runDirect(context, TOOL_BAM_LIST_READ_GROUPS, ['BAMFILE': bamfileName] as Map<String, Object>).
                             collect { new ReadGroup(it) })
             logger.always("Found the following read-groups in '$bamfileName':${Constants.ENV_LINESEPARATOR}\t" +
-                    readGroupsPerBamfile[bamfileName].readGroups.collect { it.name }.join("\t"))
+                    readGroupsPerBamfile[bamfileName].readGroups.collect { it.name }.join("${Constants.ENV_LINESEPARATOR}\t"))
         }
         readGroupsPerBamfile[bamfileName]
     }
