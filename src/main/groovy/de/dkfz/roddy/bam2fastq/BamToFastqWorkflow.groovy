@@ -82,13 +82,15 @@ class BamToFastqWorkflow extends Workflow {
         readGroupsPerBamfile[bamfileName]
     }
 
+    /** Update the ReadGroups with the names of the files as provided in a FileGroup. */
     private ReadGroupGroup<BaseFile> updatedReadGroupGroup(final ReadGroupGroup<BaseFile> oldGroups, final FileGroup fileGroup) {
         assert(oldGroups.readGroups.collect { it.files.size() }.sum() == fileGroup.size())
+        /* TODO Convert FileGroup into map and allow associating fgindex as key to file. Allows testing/using file identity/key here. */
         List<ReadGroup<BaseFile>> readGroups = []
         for (int grpIdx = 0; grpIdx < oldGroups.size(); ++grpIdx) {
             ReadGroup newGroup = new ReadGroup<BaseFile>(oldGroups.readGroups[grpIdx].name)
-            for (int tpeIxd = 0; tpeIxd < ReadFileType.values().size(); ++ tpeIxd) {
-                int idx = grpIdx * ReadFileType.values().size() + tpeIxd
+            for (int tpeIxd = 0; tpeIxd < ReadFileType.values().size(); ++tpeIxd) {
+                int idx = grpIdx * ReadFileType.values().size() + tpeIxd           // Order from ReadGroupGroup.allReadGroupIds() is used here!
                 newGroup = newGroup.updatedFile(ReadFileType.values()[tpeIxd], fileGroup[idx])
             }
             readGroups += newGroup
@@ -101,8 +103,9 @@ class BamToFastqWorkflow extends Workflow {
      */
     ReadGroupGroup bam2fastq(BaseFile controlBam, ReadGroupGroup groups) {
         List<String> rgFileIndicesParameter = groups.allReadGroupIds()
-        updatedReadGroupGroup(groups, callWithOutputFileGroup(TOOL_BAM2FASTQ, controlBam,
-                rgFileIndicesParameter, [readGroups: groups.readGroups*.name]))
+        updatedReadGroupGroup(groups,
+                callWithOutputFileGroup(TOOL_BAM2FASTQ, controlBam,
+                        rgFileIndicesParameter, [readGroups: groups.readGroups*.name]))
     }
 
     /** Submit sorting jobs for each read group. The read-group name is provided via the `readGroup` parameter. Also the BAM-file name is provided

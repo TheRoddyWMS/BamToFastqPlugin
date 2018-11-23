@@ -1,7 +1,6 @@
 package de.dkfz.roddy.bam2fastq
 
-import de.dkfz.roddy.knowledge.files.BaseFile
-import de.dkfz.roddy.knowledge.files.FileGroup
+
 import groovy.transform.CompileStatic
 
 /** Streamlined handling of a set of ReadGroups. */
