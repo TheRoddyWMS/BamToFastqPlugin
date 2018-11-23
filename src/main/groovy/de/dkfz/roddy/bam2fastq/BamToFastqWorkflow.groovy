@@ -83,9 +83,10 @@ class BamToFastqWorkflow extends Workflow {
     }
 
     /** Update the ReadGroups with the names of the files as provided in a FileGroup. */
+    /* TODO Convert FileGroup into map and allow associating fgindex as key to file. Allows testing/using file identity/key here. */
+    @Deprecated
     private ReadGroupGroup<BaseFile> updatedReadGroupGroup(final ReadGroupGroup<BaseFile> oldGroups, final FileGroup fileGroup) {
         assert(oldGroups.readGroups.collect { it.files.size() }.sum() == fileGroup.size())
-        /* TODO Convert FileGroup into map and allow associating fgindex as key to file. Allows testing/using file identity/key here. */
         List<ReadGroup<BaseFile>> readGroups = []
         for (int grpIdx = 0; grpIdx < oldGroups.size(); ++grpIdx) {
             ReadGroup newGroup = new ReadGroup<BaseFile>(oldGroups.readGroups[grpIdx].name)

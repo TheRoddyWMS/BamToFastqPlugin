@@ -84,7 +84,7 @@ class ReadGroupGroupTest extends Specification {
         rgg2.readGroups == [rgA, rgB]
     }
 
-    def "SetReadGroups"() {
+    def "SetReadGroups prohibited"() {
         given:
         def rgA = new ReadGroup<String>("a")
         def rgB = new ReadGroup<String>("b")
