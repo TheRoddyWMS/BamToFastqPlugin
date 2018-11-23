@@ -66,7 +66,9 @@ else
     sortFastq "$FILENAME_FASTQ" "$tmpSortedFastq"
 fi
 
-waitForAll_BashSucksVersion
+waitForRegisteredPids_BashSucksVersion
+
+sleep 5    # Wait for network filesystem delays
 
 mv "$tmpSortedFastq" "$FILENAME_SORTED_FASTQ" || throw 35 "Could not move '$tmpSortedFastq' to '$FILENAME_SORTED_FASTQ'"
 mv "$tmpSortedFastq.md5" "$FILENAME_SORTED_FASTQ.md5" || throw 35 "Could not move '$tmpSortedFastq.md5' to '$FILENAME_SORTED_FASTQ.md5'"

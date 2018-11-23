@@ -137,10 +137,14 @@ else
     sortFastqPair "$FILENAME_FASTQ1" "$FILENAME_FASTQ2" "$tmpSortedFastq1" "$tmpSortedFastq2"
 fi
 
-waitForAll_BashSucksVersion
+waitForRegisteredPids_BashSucksVersion
 
+waitForFile "$tmpSortedFastq1"
 mv "$tmpSortedFastq1"     "$FILENAME_SORTED_FASTQ1"     || throw 35 "Could not move '$tmpSortedFastq1' to '$FILENAME_SORTED_FASTQ1'"
 mv "$tmpSortedFastq1.md5" "$FILENAME_SORTED_FASTQ1.md5" || throw 35 "Could not move '$tmpSortedFastq1.md5' to '$FILENAME_SORTED_FASTQ1.md5'"
 
+waitForFile "$tmpSortedFastq2"
 mv "$tmpSortedFastq2"      "$FILENAME_SORTED_FASTQ2"    || throw 36 "Could not move '$tmpSortedFastq2' to '$FILENAME_SORTED_FASTQ2'"
 mv "$tmpSortedFastq2.md5" "$FILENAME_SORTED_FASTQ2.md5" || throw 35 "Could not move '$tmpSortedFastq2.md5' to '$FILENAME_SORTED_FASTQ2.md5'"
+
+cleanUp_BashSucksVersion

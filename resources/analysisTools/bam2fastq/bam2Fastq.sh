@@ -10,7 +10,7 @@
 # FILENAME_BAM:
 #   input BAM file
 #
-# FILENAME_UNSORTED_FASTQ:
+# FILENAME_UNSORTED_FASTQS:
 #   A bash array containing the filenames of the output files expected to be available after this script ran.
 #   Note that this variable needs do be string, no true Bash-array, because exporting Bash arrays to sub-processes in dysfunctional.
 #
@@ -61,7 +61,7 @@ getFastqSuffix() {
 
 fastqForGroupIndex() {
     local fgindex="${1:?No filegroup index}"
-    declare -a files=$(for fastq in ${FILENAME_UNSORTED_FASTQ[@]}; do
+    declare -a files=$(for fastq in ${FILENAME_UNSORTED_FASTQS[@]}; do
         echo "$fastq"
     done | grep --color=no "$fgindex")
     if [[ ${#files[@]} != 1 ]]; then
@@ -113,7 +113,7 @@ processPairedEndWithReadGroupsBiobambam() {
         filename="$FILENAME_BAM" \
         T="$tmpReadGroupDir/$baseName.bamtofastq_tmp" \
         outputperreadgroup=1 \
-        outputperreadgrouprgsm=1 \
+        outputperreadgrouprgsm=0 \
         outputdir="$tmpReadGroupDir" \
         collate=1 \
         colsbs=268435456 \
@@ -124,15 +124,13 @@ processPairedEndWithReadGroupsBiobambam() {
         outputperreadgroupsuffixO=_U1."$FASTQ_SUFFIX" \
         outputperreadgroupsuffixO2=_U2."$FASTQ_SUFFIX" \
         outputperreadgroupsuffixS=_S."$FASTQ_SUFFIX" \
-        outputperreadgrouprgsm=0 \
         exclude=$(bamtofastqExclusions)
 
     # Reads without group are assigned to 'default' group.
 
     ## Now make sure that the output files are renamed correctly.
     for readGroup in "${readGroups[@]}"; do
-        ## TODO Also rescue O1, O2 (singleton "orphan" read 1/2), S (single-end reads) files.
-        for read in R1 R2; do
+        for read in R1 R2 U1 U2 S; do
             local srcName="$tmpReadGroupDir/${readGroup}_${read}.$FASTQ_SUFFIX"
             local fgindex="${readGroup}_${read}"
             local tgtName=$(fastqForGroupIndex "$fgindex")
@@ -150,6 +148,7 @@ processPairedEndWithReadGroupsBiobambam() {
     done
 }
 
+# Compose a "-F $flags" string to be used for excluding reads by samtools.
 samtoolsExclusions() {
     declare -a excludedReadFlagsArray=("${excludedReadFlags[@]:-}")
     checkExclusions "${excludedReadFlagsArray[@]}"
@@ -229,10 +228,10 @@ processPairedEndWithoutReadGroupsPicard() {
         | "$PICARD_BINARY" $JAVA_OPTIONS SamToFastq $PICARD_OPTIONS INPUT=/dev/stdin
 
     ## Now make sure that the output files of Picard are renamed correctly.
-    mv "$tmpFastq1" "${FILENAME_UNSORTED_FASTQ[0]}" || throw 10 "Could not move file '$tmpFastq1' to '${FILENAME_UNSORTED_FASTQ[0]}'"
-    mv "$tmpFastq2" "${FILENAME_UNSORTED_FASTQ[1]}" || throw 10 "Could not move file '$tmpFastq2' to '${FILENAME_UNSORTED_FASTQ[1]}'"
+    mv "$tmpFastq1" "${FILENAME_UNSORTED_FASTQS[0]}" || throw 10 "Could not move file '$tmpFastq1' to '${FILENAME_UNSORTED_FASTQS[0]}'"
+    mv "$tmpFastq2" "${FILENAME_UNSORTED_FASTQS[1]}" || throw 10 "Could not move file '$tmpFastq2' to '${FILENAME_UNSORTED_FASTQS[1]}'"
     if [[ "${writeUnpairedFastq:-false}" == true ]]; then
-        mv "$tmpFastq3" "${FILENAME_UNSORTED_FASTQ[2]}" || throw 10 "Could not move file '$tmpFastq3' to '${FILENAME_UNSORTED_FASTQ[2]}'"
+        mv "$tmpFastq3" "${FILENAME_UNSORTED_FASTQS[2]}" || throw 10 "Could not move file '$tmpFastq3' to '${FILENAME_UNSORTED_FASTQS[2]}'"
     fi
 }
 
@@ -254,7 +253,7 @@ main() {
 
     # Re-Array the filenames variable (outputs). Bash does not transfer arrays properly to subprocesses. Therefore Roddy encodes arrays as strings
     # with enclosing parens. That is "(a b c)", with spaces as separators.
-    declare -ax FILENAME_UNSORTED_FASTQ=${FILENAME_UNSORTED_FASTQ}
+    declare -ax FILENAME_UNSORTED_FASTQS=${FILENAME_UNSORTED_FASTQS}
     declare -ax readGroups=${readGroups}
 
     FASTQ_SUFFIX=$(getFastqSuffix)

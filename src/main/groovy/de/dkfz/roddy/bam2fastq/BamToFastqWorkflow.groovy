@@ -5,6 +5,7 @@
  */
 package de.dkfz.roddy.bam2fastq
 
+import de.dkfz.roddy.Constants
 import de.dkfz.roddy.Roddy
 import de.dkfz.roddy.config.ConfigurationError
 import de.dkfz.roddy.core.DataSet
@@ -15,15 +16,8 @@ import de.dkfz.roddy.execution.io.ExecutionService
 import de.dkfz.roddy.knowledge.files.BaseFile
 import de.dkfz.roddy.knowledge.files.FileGroup
 import de.dkfz.roddy.tools.LoggerWrapper
-
-/*
- * Copyright (c) 2018 DKFZ - ODCF
- *
- * Distributed under the MIT License (license terms are at https://www.github.com/eilslabs/Roddy/LICENSE.txt).
- */
 import groovy.transform.CompileStatic
 
-import java.nio.file.Files
 
 @CompileStatic
 class BamToFastqWorkflow extends Workflow {
@@ -34,7 +28,7 @@ class BamToFastqWorkflow extends Workflow {
 
     private synchronized static Map<DataSet, Config> _config = [:]
 
-    private synchronized final static Map<String,List<String>> readGroupsPerBamfile = [:]
+    private synchronized final static Map<String,ReadGroupGroup> readGroupsPerBamfile = [:]
 
     public static final String TOOL_BAM_LIST_READ_GROUPS = "bamListReadGroups"
     public static final String TOOL_BAM2FASTQ = "bam2fastq"
@@ -70,36 +64,52 @@ class BamToFastqWorkflow extends Workflow {
     }
 
     /**
-     * Return a list of read-groups identifiers from a bam
+     * Return a list of ReadGroups from a BAM file. This executes the TOOL_BAM_LIST_READ_GROUPS on the (possibly remote) submission host.
      * @param context
      * @param bamfileName
      */
-    List<String> listReadGroups(String bamfileName) {
+    ReadGroupGroup listReadGroups(String bamfileName) {
         if (!readGroupsPerBamfile[bamfileName]) {
             logger.always("Listing read groups in '$bamfileName'.")
             readGroupsPerBamfile[bamfileName] =
-                    ExecutionService.getInstance().runDirect(context, TOOL_BAM_LIST_READ_GROUPS, ["BAMFILE": bamfileName] as Map<String, Object>)
+                    new ReadGroupGroup(
+                            ExecutionService.getInstance().
+                            runDirect(context, TOOL_BAM_LIST_READ_GROUPS, ['BAMFILE': bamfileName] as Map<String, Object>).
+                            collect { new ReadGroup(it) })
+            logger.always("Found the following read-groups in '$bamfileName':${Constants.ENV_LINESEPARATOR}\t" +
+                    readGroupsPerBamfile[bamfileName].readGroups.collect { it.name }.join("${Constants.ENV_LINESEPARATOR}\t"))
         }
-        return readGroupsPerBamfile[bamfileName]
+        readGroupsPerBamfile[bamfileName]
     }
 
-    static List<String> readGroupIndices(List<String> readGroups) {
-        return readGroups.collect { String rg -> [rg + "_R1", rg + "_R2"] }.flatten() as List<String>
+    /** Update the ReadGroups with the names of the files as provided in a FileGroup. */
+    /* TODO Convert FileGroup into map and allow associating fgindex as key to file. Allows testing/using file identity/key here. */
+    @Deprecated
+    private ReadGroupGroup<BaseFile> updatedReadGroupGroup(final ReadGroupGroup<BaseFile> oldGroups, final FileGroup fileGroup) {
+        assert(oldGroups.readGroups.collect { it.files.size() }.sum() == fileGroup.size())
+        List<ReadGroup<BaseFile>> readGroups = []
+        for (int grpIdx = 0; grpIdx < oldGroups.size(); ++grpIdx) {
+            ReadGroup newGroup = new ReadGroup<BaseFile>(oldGroups.readGroups[grpIdx].name)
+            for (int tpeIxd = 0; tpeIxd < ReadFileType.values().size(); ++tpeIxd) {
+                int idx = grpIdx * ReadFileType.values().size() + tpeIxd           // Order from ReadGroupGroup.allReadGroupIds() is used here!
+                newGroup = newGroup.updatedFile(ReadFileType.values()[tpeIxd], fileGroup[idx])
+            }
+            readGroups += newGroup
+        }
+        return new ReadGroupGroup(readGroups)
     }
 
     /**
      * Extract FASTQs from a BAM. This may be with or without read-groups. The names of the output files depend on the parameters.
      */
-    FileGroup bam2fastq(BaseFile controlBam, List<String> readGroups) {
-        if (config.pairedEnd) {
-            List<String> rgFileIndicesParameter = readGroupIndices(readGroups)
-            return callWithOutputFileGroup(TOOL_BAM2FASTQ, controlBam, rgFileIndicesParameter, [readGroups: readGroups])
-        } else {
-            throw new ConfigurationError("Single-end bam2fastq not implemented", config.FLAG_PAIRED_END)
-        }
+    ReadGroupGroup bam2fastq(BaseFile controlBam, ReadGroupGroup groups) {
+        List<String> rgFileIndicesParameter = groups.allReadGroupIds()
+        updatedReadGroupGroup(groups,
+                callWithOutputFileGroup(TOOL_BAM2FASTQ, controlBam,
+                        rgFileIndicesParameter, [readGroups: groups.readGroups*.name]))
     }
 
-    /** Submit a sorting job for each read group. The read-group name is provided via the `readGroup` parameter. Also the BAM-file name is provided
+    /** Submit sorting jobs for each read group. The read-group name is provided via the `readGroup` parameter. Also the BAM-file name is provided
      *  such that it can be used in the filename pattern using the `${cvalue}` syntax.
      *
      * @param bamFileName
@@ -108,25 +118,23 @@ class BamToFastqWorkflow extends Workflow {
      * @param fastq2
      * @param fastq3
      */
-    void sortFastqs(String bamFileName, String readGroup, BaseFile fastq1, BaseFile fastq2 = null) {
-        assert(fastq1 != null)
-        assert(fastq1.absolutePath != fastq2?.absolutePath)
+    void sortPairedFastqs(String bamFileName, String readGroup, BaseFile fastq1, BaseFile fastq2) {
+        assert (fastq1 != null)
+        assert (fastq1.absolutePath != fastq2?.absolutePath)
         HashMap<String, String> parameters = [readGroup: readGroup, bamFileName: bamFileName]
-        if (config.pairedEnd) {
-            if (!config.writeUnpairedFastq) {
-                call_fileObject(TOOL_SORT_FASTQ_PAIR, fastq1, fastq2, parameters)
-            } else {
-                throw new ConfigurationError("Single-end sortFastq not implemented", config.FLAG_PAIRED_END)
-            }
-        } else {
-            call_fileObject(TOOL_SORT_FASTQ_SINGLE, fastq1, parameters)
-        }
+        call_fileObject(TOOL_SORT_FASTQ_PAIR, fastq1, fastq2, parameters)
     }
 
-    protected FileGroup cleanupFastqsForBam(Config config, BaseFile controlBam, List<String> readGroups) {
+    void sortFastq(String bamFileName, String readGroup, BaseFile fastq) {
+        assert (fastq != null)
+        HashMap<String, String> parameters = [readGroup: readGroup, bamFileName: bamFileName]
+        call_fileObject(TOOL_SORT_FASTQ_SINGLE, fastq, parameters)
+    }
+
+    protected FileGroup cleanupFastqsForBam(Config config, BaseFile controlBam, ReadGroupGroup groups) {
         if (config.pairedEnd) {
-            List<String> rgFileIndicesParameter = readGroupIndices(readGroups)
-            return callWithOutputFileGroup(TOOL_CLEANUP, controlBam, rgFileIndicesParameter, [readGroups: readGroups])
+            List<String> rgFileIndicesParameter = groups.allReadGroupIds()
+            return callWithOutputFileGroup(TOOL_CLEANUP, controlBam, rgFileIndicesParameter, [readGroups: groups])
         } else {
             throw new ConfigurationError("Single-end cleanup not implemented", config.FLAG_PAIRED_END)
         }
@@ -137,15 +145,15 @@ class BamToFastqWorkflow extends Workflow {
         for (BaseFile BaseFile : _bamFilesPerDataset.get(context.dataSet, [])) {
 
             if (config.outputPerReadGroup) {
-                cleanupFastqsForBam(config, BaseFile, readGroupsPerBamfile[BaseFile.getAbsolutePath()])
+                cleanupFastqsForBam(config, BaseFile, readGroupsPerBamfile[BaseFile.absolutePath])
             }
 
         }
         return true
     }
 
-    Map<String, List<String>> readAllReadGroups(List<BaseFile> bamFiles) {
-        return bamFiles.collectEntries { bamFile ->
+    Map<String, ReadGroupGroup> readAllReadGroups(List<BaseFile> bamFiles) {
+        bamFiles.collectEntries { bamFile ->
             [(bamFile.absolutePath): listReadGroups(bamFile.absolutePath)]
         }
     }
@@ -163,7 +171,7 @@ class BamToFastqWorkflow extends Workflow {
         } else {
             result &= false
         }
-        return result
+        result
     }
 
     @Override
@@ -172,20 +180,23 @@ class BamToFastqWorkflow extends Workflow {
         for (BaseFile bamFile : bamFiles) {
 
             if (config.outputPerReadGroup) {
-                List<String> readGroups = readGroupsPerBamfile[bamFile.absolutePath]
+                ReadGroupGroup<BaseFile> groups = readGroupsPerBamfile[bamFile.absolutePath]
 
-                FileGroup unsortedFastqs = bam2fastq(bamFile, readGroups)
+                ReadGroupGroup<BaseFile> groupsWithUnsortedFastqs = bam2fastq(bamFile, groups)
 
                 if (config.sortFastqs) {
-                    for (int i = 0; i < readGroups.size(); i++) {
-                        this.sortFastqs(bamFile.getPath().name, readGroups[i], unsortedFastqs[i * 2], unsortedFastqs[i * 2 + 1]) // All paired end, sorted by read group.
+                    for (ReadGroup<BaseFile> grp : groupsWithUnsortedFastqs.readGroups) {
+                        sortPairedFastqs(bamFile.getPath().name, grp.name, grp[ReadFileType.READ1], grp[ReadFileType.READ2]) // R1/R2
+                        sortFastq(bamFile.getPath().name, grp.name, grp[ReadFileType.UNMATCHED_READ1]) // U1
+                        sortFastq(bamFile.getPath().name, grp.name, grp[ReadFileType.UNMATCHED_READ2]) // U2
+                        sortFastq(bamFile.getPath().name, grp.name, grp[ReadFileType.SINGLETON]) // S
                     }
                 }
 
             } else {
 //                FileGroup out = bam2fastq(cfg, BaseFile)
-//                if (cfg.sortFastqs())
-//                    this.sortFastqs(cfg)
+//                if (cfg.sortPairedFastqs())
+//                    this.sortPairedFastqs(cfg)
                 throw new ConfigurationError("bam2fastq without output per read group not implemented", config.FLAG_SPLIT_BY_READ_GROUP)
             }
 
@@ -205,7 +216,7 @@ class BamToFastqWorkflow extends Workflow {
     }
 
     protected boolean checkReadGroups(List<BaseFile> bamFiles) {
-        Map<String, List<String>> readGroups = bamFiles.collectEntries { [(it): readGroupsPerBamfile[it.absolutePath]] }
+        Map<String, ReadGroupGroup<BaseFile>> readGroups = bamFiles.collectEntries { [(it): readGroupsPerBamfile[it.absolutePath]] }
 
         boolean result = readGroups.collect { file, groups ->
             if (groups.size() == 0) {
@@ -217,7 +228,8 @@ class BamToFastqWorkflow extends Workflow {
             }
         }.every()
 
-        readGroups.values().flatten().countBy { it }.forEach { String group, Integer count ->
+        List<String> allReadGroupNames = readGroups.values().collect { it.readGroups.collect { it.name } }.flatten() as List<String>
+        allReadGroupNames.countBy { it }.forEach { String group, Integer count ->
             if (count > 1) {
                 // This is not a fatal error but may be intentional. Therefore just inform.
                 logger.warning("Read group '${group}' occurs in multiple files. Continuing ...")

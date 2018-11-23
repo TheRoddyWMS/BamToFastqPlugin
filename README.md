@@ -32,7 +32,17 @@ The name of the Conda environment is arbitrary but needs to be consistent with t
 
 In terms of Roddy "modes", the workflow has two targets, namely `run`/`rerun` to run the actual workflow and `cleanup` to remove the unsorted FASTQ files.
 
-### Basic Config
+The simplest way to start the workflow is without a dedicated configuration file by using the plugin-internal configuration:
+
+```bash
+roddy.sh run BamToFastqPlugin_$version:bam2fastqAnalysis $pid \
+  --useiodir=$inputDir,$outputDir \
+  --cvalues="bamfile_list:/path/to/your/data.bam"
+```
+
+The string `BamToFastqPlugin_$version:bam2fastqAnalysis` here is the name of the plugin -- that should also be used as part of the name of the plugin directory and the version of the plugin as found in the plugin directory. Thus, if you plugin's installation directory is called `BamToFastqPlugin_1.0.2`, then the used configuration would be `BamToFastqPlugin_1.0.2:bam2fastqAnalysis`.
+
+### Using a Configuration File
 
 A basic configuration may look like this:
 
@@ -91,6 +101,16 @@ roddy.sh run bam2fastq.any@convert testpid --useconfig=$pathToYourAppIni --useio
 Concerning the "datasets" (here `testpid`): The above command will read in the directories in the `$inPath` and interpret them as datasets (e.g. patients). Among these subdirectories one needs to be called "testpid", like the requested dataset in the call above. This is the current situation but we plan to make the workflow able to e.g. retrieve BAM files following some filter critia (glob, regex) from the input directory and interpret the path from the input directory to the BAM as dataset name. 
 
 Use the `rerun` mode to restart a failed workflow while keeping already generated old results.
+
+### Output
+
+Reads are classified into one of 5 groups:
+
+* R1, R2: paired reads (first and second) with matching mates found.
+* U1, U2: paired reads (first and second) for which no matching mates were found (=orphans). Obviously, these two files will not have the same order.
+* S: unpaired reads (singletons), i.e. reads that are not marked as being paired
+
+The workflow produces one unsorted and one sorted GZipped FASTQ for each of these categories and for each read group in the input BAM. This includes a "default" read-group for reads that are not assigned to any group. For paired and matched reads the read 1 and read 2 FASTQs always will have the same order. This means, that in many cases your reads will only be in the R1 and R2 classes for paired-end data or in the S class for single end data.
 
 ### `cleanup`
 

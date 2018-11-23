@@ -61,7 +61,7 @@ reverseArray() {
 # The dummy contains a random string to avoid collision with possible filenames (the filename 'dummy' is quite likely).
 ARRAY_ELEMENT_DUMMY=$(mktemp -u "_dummy_XXXXX")
 
-waitForAll_BashSucksVersion() {
+waitForRegisteredPids_BashSucksVersion() {
     jobs
     declare -a realPids=$(for pid in "${pids[@]}"; do if [[ "$pid" != "$ARRAY_ELEMENT_DUMMY" ]]; then echo "$pid"; fi; done)
     if [[ -v realPids && ${#realPids[@]} -gt 0 ]]; then
@@ -96,7 +96,7 @@ cleanUp_BashSucksVersion() {
 }
 
 # These versions only works with Bash >4.4. Prior version do not really declare the array variables with empty values and set -u results in error message.
-waitForAll() {
+waitForRegisteredPids() {
     jobs
     wait ${pids[@]}
     pids=()
@@ -118,6 +118,19 @@ cleanUp() {
     fi
 }
 
+# Used to wait for a file expected to appear within the next moments. This is necessary, because in a network filesystems there may be latencies
+# for synchronizing the filesystem between nodes.
+waitForFile() {
+    local file="${1:?No file to wait for}"
+    local waitCount=0
+    while [[ ${waitCount} -lt 3 && ! (-r "$file") ]]; do sleep 5; waitCount=$((waitCount + 1)); echo $waitCount; done
+    if [[ ! -r "$file" ]]; then
+        echo "The file '$file' does not exist or is not readable."
+        exit 200
+    else
+        return 0
+    fi
+}
 
 tmpBaseFile() {
     local name="${1:?No filename given}"
