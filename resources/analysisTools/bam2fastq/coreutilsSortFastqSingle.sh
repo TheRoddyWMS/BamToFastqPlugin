@@ -66,7 +66,7 @@ else
     sortFastq "$FILENAME_FASTQ" "$tmpSortedFastq"
 fi
 
-waitForAll_BashSucksVersion
+waitForRegisteredPids_BashSucksVersion
 
 sleep 5    # Wait for network filesystem delays
 
