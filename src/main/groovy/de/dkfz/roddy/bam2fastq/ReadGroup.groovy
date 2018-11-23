@@ -23,19 +23,19 @@ enum ReadFileType {
 
 
 @CompileStatic
-class ReadGroup {
+class ReadGroup<T> {
 
     final String name
-    final protected Map<ReadFileType, BaseFile> files
+    final protected Map<ReadFileType, T> files
 
-    ReadGroup(String name, Map<ReadFileType, BaseFile> files) {
+    ReadGroup(String name, Map<ReadFileType, T> files) {
         this.name = name
         this.files = files
     }
 
     ReadGroup(String name) {
         this.name = name
-        files = ReadFileType.values().collectEntries { type -> new MapEntry(type, null) } as LinkedHashMap<ReadFileType, BaseFile>
+        files = ReadFileType.values().collectEntries { type -> new MapEntry(type, null) } as LinkedHashMap<ReadFileType, T>
     }
 
     List<String> readGroupIds() {
@@ -47,15 +47,15 @@ class ReadGroup {
     }
 
     /** Functional interface function doing a (shallow-)copy-on-write */
-    ReadGroup updatedFile(ReadFileType type, BaseFile newFile) {
-        Map<ReadFileType, BaseFile> newFiles = files.collectEntries { iterType, oldFile ->
+    ReadGroup<T> updatedFile(ReadFileType type, T newFile) {
+        Map<ReadFileType, T> newFiles = files.collectEntries { iterType, oldFile ->
             new MapEntry(iterType, type == iterType ? newFile : oldFile)
-        } as LinkedHashMap<ReadFileType, BaseFile>
+        } as LinkedHashMap<ReadFileType, T>
         ReadGroup newGroup = new ReadGroup(name, newFiles)
         newGroup
     }
 
-    BaseFile getAt(ReadFileType type) {
+    T getAt(ReadFileType type) {
         files[type]
     }
 

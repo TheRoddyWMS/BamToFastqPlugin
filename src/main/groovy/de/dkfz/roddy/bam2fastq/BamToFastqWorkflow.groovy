@@ -82,12 +82,26 @@ class BamToFastqWorkflow extends Workflow {
         readGroupsPerBamfile[bamfileName]
     }
 
+    private ReadGroupGroup<BaseFile> updatedReadGroupGroup(final ReadGroupGroup<BaseFile> oldGroups, final FileGroup fileGroup) {
+        assert(oldGroups.readGroups.collect { it.files.size() }.sum() == fileGroup.size())
+        List<ReadGroup<BaseFile>> readGroups = []
+        for (int grpIdx = 0; grpIdx < oldGroups.size(); ++grpIdx) {
+            ReadGroup newGroup = new ReadGroup<BaseFile>(oldGroups.readGroups[grpIdx].name)
+            for (int tpeIxd = 0; tpeIxd < ReadFileType.values().size(); ++ tpeIxd) {
+                int idx = grpIdx * ReadFileType.values().size() + tpeIxd
+                newGroup = newGroup.updatedFile(ReadFileType.values()[tpeIxd], fileGroup[idx])
+            }
+            readGroups += newGroup
+        }
+        return new ReadGroupGroup(readGroups)
+    }
+
     /**
      * Extract FASTQs from a BAM. This may be with or without read-groups. The names of the output files depend on the parameters.
      */
     ReadGroupGroup bam2fastq(BaseFile controlBam, ReadGroupGroup groups) {
         List<String> rgFileIndicesParameter = groups.allReadGroupIds()
-        new ReadGroupGroup(groups, callWithOutputFileGroup(TOOL_BAM2FASTQ, controlBam,
+        updatedReadGroupGroup(groups, callWithOutputFileGroup(TOOL_BAM2FASTQ, controlBam,
                 rgFileIndicesParameter, [readGroups: groups.readGroups*.name]))
     }
 
@@ -162,12 +176,12 @@ class BamToFastqWorkflow extends Workflow {
         for (BaseFile bamFile : bamFiles) {
 
             if (config.outputPerReadGroup) {
-                ReadGroupGroup groups = readGroupsPerBamfile[bamFile.absolutePath]
+                ReadGroupGroup<BaseFile> groups = readGroupsPerBamfile[bamFile.absolutePath]
 
-                ReadGroupGroup groupsWithUnsortedFastqs = bam2fastq(bamFile, groups)
+                ReadGroupGroup<BaseFile> groupsWithUnsortedFastqs = bam2fastq(bamFile, groups)
 
                 if (config.sortFastqs) {
-                    for (ReadGroup grp : groupsWithUnsortedFastqs.readGroups) {
+                    for (ReadGroup<BaseFile> grp : groupsWithUnsortedFastqs.readGroups) {
                         sortPairedFastqs(bamFile.getPath().name, grp.name, grp[ReadFileType.READ1], grp[ReadFileType.READ2]) // R1/R2
                         sortFastq(bamFile.getPath().name, grp.name, grp[ReadFileType.UNMATCHED_READ1]) // U1
                         sortFastq(bamFile.getPath().name, grp.name, grp[ReadFileType.UNMATCHED_READ2]) // U2
@@ -198,7 +212,7 @@ class BamToFastqWorkflow extends Workflow {
     }
 
     protected boolean checkReadGroups(List<BaseFile> bamFiles) {
-        Map<String, ReadGroupGroup> readGroups = bamFiles.collectEntries { [(it): readGroupsPerBamfile[it.absolutePath]] }
+        Map<String, ReadGroupGroup<BaseFile>> readGroups = bamFiles.collectEntries { [(it): readGroupsPerBamfile[it.absolutePath]] }
 
         boolean result = readGroups.collect { file, groups ->
             if (groups.size() == 0) {
