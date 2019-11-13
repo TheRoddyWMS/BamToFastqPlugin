@@ -30,6 +30,8 @@ The name of the Conda environment is arbitrary but needs to be consistent with t
 
 ## Using the Workflow
 
+Please refer to the [Roddy documentation](https://roddy-documentation.readthedocs.io/en/latest/) for basic information about how to start Roddy, such as the content of the `applicationProperties.ini` file.
+
 In terms of Roddy "modes", the workflow has two targets, namely `run`/`rerun` to run the actual workflow and `cleanup` to remove the unsorted FASTQ files.
 
 The simplest way to start the workflow is without a dedicated configuration file by using the plugin-internal configuration:
@@ -131,4 +133,4 @@ roddy.sh cleanup $configName@convert --useconfig=$pathToYourAppIni
 ## TODOs
 
 * Single-end BAM processing is not yet supported. Parameter "pairedEnd" is currently set to "true".
-* Unpaired FASTQs ("writeUnpairedFastq" is currently defaulting to "false"), for reads from the original BAM that are not paired, can be written, but there is no facility in the workflow yet to sort it by name.
+* Unpaired FASTQs ("writeUnpairedFastq" is currently defaulting to "false"), for reads from the original BAM that are not paired, can be written, but there is no facility in the workflow yet to sort them by name.
