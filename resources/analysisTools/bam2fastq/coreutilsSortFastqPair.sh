@@ -19,6 +19,10 @@ sortFastqPair() {
     local outfile1="${3:?No output fastq 1 given}"
     local outfile2="${4:?No output fastq 2 given}"
 
+    # Ensure the output file directories exist. They are probably the same but I don't bother checking that.
+    ensureDirectoryExists $(dirname "$outfile1")
+    ensureDirectoryExists $(dirname "$outfile2")
+
     local sourceCommand="cat"
     if [[ "${compressIntermediateFastqs:-true}" ]]; then
         sourceCommand="$compressor -d"

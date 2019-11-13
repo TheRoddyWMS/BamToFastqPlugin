@@ -132,6 +132,16 @@ waitForFile() {
     fi
 }
 
+# Ensure that there is a directory with the given path name. This won't check whether the directory exists or is
+# accessible. If the directory does not exist and cannot get created this should end with the exit code and error
+# message `mkdir` uses to indicate a problem.
+ensureDirectoryExists() {
+    local pathname="${1:?No directory name given}"
+    if [[ ! -e "$pathname" ]]; then
+        mkdir -p "$pathname"
+    fi
+}
+
 tmpBaseFile() {
     local name="${1:?No filename given}"
     echo "$RODDY_SCRATCH"/$(basename "$name")
