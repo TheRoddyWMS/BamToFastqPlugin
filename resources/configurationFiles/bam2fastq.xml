@@ -19,6 +19,8 @@
         <cvalue name='PICARD_VERSION' value='2.13.2' type="string"/>
         <cvalue name='JAVA_VERSION' value='1.8.0_131' type="string"/>
         <cvalue name='BIOBAMBAM_VERSION' value="2.0.87" type="string"/>
+        <cvalue name='BASH_VERSION' value="4.4.18" type="string"
+                description="Bash 4.2 has a bug that empty (associative) lists are considered non-existent which clashes with `set -u`."/>
 
         <cvalue name="converter" value="biobambam" type="string"
                 description="BAM to FASTQ converter. Default: picard. Allowed: picard, biobambam"/>

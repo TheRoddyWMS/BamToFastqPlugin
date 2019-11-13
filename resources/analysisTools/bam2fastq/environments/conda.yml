@@ -1,28 +1,34 @@
 name: BamToFastqPlugin
 channels:
-- bioconda
-- conda-forge
-- defaults
-- r
+  - conda-forge
+  - bioconda
+  - bioconda-legacy
+  - defaults
 dependencies:
-- biobambam=2.0.87=0
-- mbuffer=20160228=0
-- picard=2.14.1=py36_0
-- samtools=1.2=2
-- ca-certificates=2018.1.18=0
-- certifi=2018.1.18=py36_0
-- ncurses=5.9=10
-- openjdk=8.0.144=zulu8.23.0.3_1
-- openssl=1.0.2n=0
-- pbzip2=1.1.13=0
-- perl=5.22.2.1=0
-- pigz=2.3.4=0
-- pip=9.0.1=py36_1
-- python=3.6.4=0
-- readline=7.0=0
-- setuptools=38.5.1=py36_0
-- sqlite=3.20.1=2
-- tk=8.6.7=0
-- wheel=0.30.0=py36_2
-- xz=5.2.3=0
-- zlib=1.2.11=0
+  - _libgcc_mutex=0.1=main
+  - bash=4.4.18=h67949de_1000
+  - biobambam=2.0.87=0
+  - ca-certificates=2019.9.11=hecc5488_0
+  - certifi=2019.9.11=py36_0
+  - libffi=3.2.1=he1b5a44_1006
+  - libgcc-ng=9.1.0=hdf63c60_0
+  - libstdcxx-ng=9.1.0=hdf63c60_0
+  - mbuffer=20160228=0
+  - ncurses=6.1=hf484d3e_1002
+  - openjdk=8.0.144=zulu8.23.0.3_1
+  - openssl=1.0.2t=h14c3975_0
+  - pbzip2=1.1.13=0
+  - perl=5.22.2.1=0
+  - picard=2.14.1=py36_0
+  - pigz=2.3.4=0
+  - pip=9.0.1=py36_1
+  - python=3.6.5=hc3d631a_2
+  - readline=7.0=hf8c457e_1001
+  - samtools=1.2=2
+  - setuptools=38.5.1=py36_0
+  - sqlite=3.28.0=h8b20d00_0
+  - tk=8.6.7=0
+  - wheel=0.30.0=py36_2
+  - xz=5.2.3=0
+  - zlib=1.2.11=0
+
