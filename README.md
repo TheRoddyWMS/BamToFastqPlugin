@@ -23,7 +23,8 @@ conda config --add channels bioconda
 Then install the environment
 
 ```
-conda env create -n BamToFastqPlugin -f $PATH_TO_PLUGIN_DIRECTORY/resources/analysisTools/bam2fastq/environments/conda.yml
+version=1.1.1
+conda env create -n BamToFastqPlugin_$version -f $PATH_TO_PLUGIN_DIRECTORY/resources/analysisTools/bam2fastq/environments/conda.yml
 ```
 
 The name of the Conda environment is arbitrary but needs to be consistent with the `condaEnvironmentName` variable. The default for that variable is set in `resources/configurationFiles/bam2fastq.xml`.
