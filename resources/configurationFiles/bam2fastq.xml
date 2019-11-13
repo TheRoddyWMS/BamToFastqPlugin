@@ -26,7 +26,7 @@
                 description="BAM to FASTQ converter. Default: picard. Allowed: picard, biobambam"/>
         <cvalue name="pairedEnd" value="true" type="boolean"
                 description="Whether the input BAMs are paired end BAMs."/>
-        <cvalue name="excludedReadFlags" value="secondary supplementary" type="basharray"
+        <cvalue name="excludedReadFlags" value="secondary supplementary" type="bashArray"
                 description="Reads with these flags are excluded. Space delimited list (interpreted as bash array) of the following values: secondary, supplementary."/>
         <cvalue name="writeUnpairedFastq" value="false" type="boolean"
                 description="Write unpaired reads into a dedicated FASTQ. Only possible if pairedEnd=true. If 'false' these reads are discarded!"/>
