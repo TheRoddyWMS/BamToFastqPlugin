@@ -79,18 +79,18 @@ biobambamCompressIntermediateFastqs() {
 }
 
 checkExclusions() {
-    declare -a flagList=($@)
+    declare -la flagList=($@)
     for flag in "${flagList[@]}"; do
-       if [[ "$flag" != "secondary" && "$flag" != "supplementary" ]]; then
+       if [[ $(toLower "$flag") != "secondary" && $(toLower "$flag") != "supplementary" ]]; then
           throw 20 "Cannot set '$flag' flag."
        fi
     done
 }
 
 bamtofastqExclusions() {
-    declare -a _excludedReadFlags=("${excludedReadFlags[@]:-}")
+    declare -la _excludedReadFlags=("${excludedReadFlags[@]:-}")
     checkExclusions "${_excludedReadFlags[@]}"
-    stringJoin "," "${_excludedReadFlags[@]^^}"
+    toUpper $(stringJoin "," "${_excludedReadFlags[@]}")
 }
 
 processPairedEndWithReadGroupsBiobambam() {
@@ -150,10 +150,10 @@ processPairedEndWithReadGroupsBiobambam() {
 
 # Compose a "-F $flags" string to be used for excluding reads by samtools.
 samtoolsExclusions() {
-    declare -a excludedReadFlagsArray=("${excludedReadFlags[@]:-}")
+    declare -la excludedReadFlagsArray=("${excludedReadFlags[@]:-}")
     checkExclusions "${excludedReadFlagsArray[@]}"
-    declare exclusionFlag=0
-    declare exclusionsString=$(stringJoin "," "${excludedReadFlagsArray[@]}")
+    local exclusionFlag=0
+    local exclusionsString=$(stringJoin "," $(toLower "${excludedReadFlagsArray[@]}"))
     if (echo "$exclusionsString" | grep -wq "supplementary"); then
         let exclusionFlag=($exclusionFlag + 2048)
     fi

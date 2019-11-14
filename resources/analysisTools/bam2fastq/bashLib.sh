@@ -89,17 +89,14 @@ printInfo () {
     date +'%Y-%m-%d_%Hh%M'
 }
 
-
 ## Use 'assertNonEmpty $parameter || return $?'
 assertNonEmpty () {
-
     local value="$1"
     local message="${2-EMPTY_VALUE_MSG}"
     if [[ "$value" == "" ]]; then
         throw "$EMPTY_VALUE_CODE" "$message" || return $?
     fi
 }
-
 
 waitAndMaybeExit () {
     local pid="$1"
@@ -111,6 +108,21 @@ waitAndMaybeExit () {
     fi
 }
 
+toLower() {
+    echo "${@,,?}"
+}
+
+toUpper() {
+    echo "${@^^?}"
+}
+
+map() {
+    local funName="${1:?No function name to map over argument list}"
+    shift
+    for arg in "$@"; do
+        $funName "$arg"
+    done
+}
 
 stringJoin () {
     local separator="$1"
