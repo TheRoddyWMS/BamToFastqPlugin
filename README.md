@@ -135,3 +135,7 @@ roddy.sh cleanup $configName@convert --useconfig=$pathToYourAppIni
 
 * Single-end BAM processing is not yet supported. Parameter "pairedEnd" is currently set to "true".
 * Unpaired FASTQs ("writeUnpairedFastq" is currently defaulting to "false"), for reads from the original BAM that are not paired, can be written, but there is no facility in the workflow yet to sort them by name.
+
+## Changes
+
+Please see the [change logs](CHANGELOG.md).
