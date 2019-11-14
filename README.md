@@ -23,12 +23,15 @@ conda config --add channels bioconda
 Then install the environment
 
 ```
-conda env create -n BamToFastqPlugin -f $PATH_TO_PLUGIN_DIRECTORY/resources/analysisTools/bam2fastq/environments/conda.yml
+version=1.1.1
+conda env create -n BamToFastqPlugin_$version -f $PATH_TO_PLUGIN_DIRECTORY/resources/analysisTools/bam2fastq/environments/conda.yml
 ```
 
 The name of the Conda environment is arbitrary but needs to be consistent with the `condaEnvironmentName` variable. The default for that variable is set in `resources/configurationFiles/bam2fastq.xml`.
 
 ## Using the Workflow
+
+Please refer to the [Roddy documentation](https://roddy-documentation.readthedocs.io/en/latest/) for basic information about how to start Roddy, such as the content of the `applicationProperties.ini` file.
 
 In terms of Roddy "modes", the workflow has two targets, namely `run`/`rerun` to run the actual workflow and `cleanup` to remove the unsorted FASTQ files.
 
@@ -131,4 +134,4 @@ roddy.sh cleanup $configName@convert --useconfig=$pathToYourAppIni
 ## TODOs
 
 * Single-end BAM processing is not yet supported. Parameter "pairedEnd" is currently set to "true".
-* Unpaired FASTQs ("writeUnpairedFastq" is currently defaulting to "false"), for reads from the original BAM that are not paired, can be written, but there is no facility in the workflow yet to sort it by name.
+* Unpaired FASTQs ("writeUnpairedFastq" is currently defaulting to "false"), for reads from the original BAM that are not paired, can be written, but there is no facility in the workflow yet to sort them by name.

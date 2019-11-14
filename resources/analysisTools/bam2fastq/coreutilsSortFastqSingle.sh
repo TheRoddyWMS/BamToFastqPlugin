@@ -23,10 +23,14 @@ set -uvex
 sortFastq() {
     local infile="${1:-/dev/stdin}"
     local outfile="${2:-/dev/stdout}"
+
+    ensureDirectoryExists $(dirname "$outfile")
+
     local sourceCommand="cat"
     if [[ "${compressIntermediateFastqs:-true}" ]]; then
         sourceCommand="gunzip -c"
     fi
+
     $sourceCommand "$infile" \
         | fastqLinearize \
         | sortLinearizedFastqStream $(basename "$infile") \
