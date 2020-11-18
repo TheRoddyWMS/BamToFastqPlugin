@@ -12,7 +12,7 @@ The workflow has very few requirements. Beyond a working [Roddy](https://github.
 
 ### Conda
 
-> **NOTE**: Due to a [bug in biobambam](https://gitlab.com/german.tischler/biobambam2/-/issues/94) 2.0.87 version, which is used in this Conda environment, for incomplete BAMs an orphaned-reads-FASTQ for the second reads is not written.
+> **NOTE**: Due to a [bug in biobambam](https://gitlab.com/german.tischler/biobambam2/-/issues/94) 2.0.87, which is used in this Conda environment, for incomplete BAMs the orphaned-reads-FASTQs for the second reads are not written when output is per read-group.
 
 The workflow contains a description of a [Conda](https://conda.io/docs/) environment. A number of Conda packages from [BioConda](https://bioconda.github.io/index.html) are required. You should set up the Conda environment at a centralized position available from all compute hosts. 
 
