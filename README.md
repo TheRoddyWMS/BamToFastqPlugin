@@ -1,3 +1,5 @@
+> **IMPORTANT**: This software is deprecated and will not receive much attention anymore. Please use the Nextflow-based [replacement workflow](https://github.com/DKFZ-ODCF/nf-bam2fastq).
+
 # BamToFastqPlugin
 
 This [Roddy](https://github.com/TheRoddyWMS/Roddy) plugin contains a workflow for converting multi-read-group BAMs into name-sorted FASTQs. The name-sorting is a time-consuming step that however ensures that tools like BWA, which estimate parameters from batches of reads, produce unbiased results (consider estimates of e.g. insert size depending on the genomic regions).
@@ -9,6 +11,8 @@ Basically two simple steps are taken. First the BAM is converted to one or multi
 The workflow has very few requirements. Beyond a working [Roddy](https://github.com/TheRoddyWMS/Roddy) installation, it uses Biobambam or Picard for the actual BAM-to-FASTQ conversion and coreutils sort for the name-sorting of FASTQs.
 
 ### Conda
+
+> **NOTE**: Due to a [bug in biobambam](https://gitlab.com/german.tischler/biobambam2/-/issues/94) 2.0.87 version, which is used in this Conda environment, for incomplete BAMs an orphaned-reads-FASTQ for the second reads is not written.
 
 The workflow contains a description of a [Conda](https://conda.io/docs/) environment. A number of Conda packages from [BioConda](https://bioconda.github.io/index.html) are required. You should set up the Conda environment at a centralized position available from all compute hosts. 
 
